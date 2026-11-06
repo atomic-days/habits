@@ -220,6 +220,11 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
     today: toDateKey(clock),
     repo,
     reload: () => load(repo),
+    // Background reload: a failed pull keeps the screen and shows the offline status.
+    refresh: async () => {
+      await flushRef.current(repo);
+      await loadRef.current(repo, true);
+    },
     openForm: (habitId) => setForm({ habitId }),
     actions: actions!,
     sync: { offline, pending: pending.length, syncing, syncedAt },

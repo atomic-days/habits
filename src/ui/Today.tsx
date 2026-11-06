@@ -1,6 +1,8 @@
 import { dueToday, dueYesterday, comingUp } from '../model/schedule.ts';
 import { isMet } from '../model/values.ts';
 import { useApp } from './AppContext.tsx';
+import { PullIndicator } from './PullIndicator.tsx';
+import { usePullToRefresh } from './usePullToRefresh.ts';
 import { Archived } from './Archived.tsx';
 import { ConnectHealthCard } from './ConnectHealthCard.tsx';
 import { FastCard } from './FastCard.tsx';
@@ -12,7 +14,8 @@ import { longDate, weekdayName } from './format.ts';
 import './today.css';
 
 export function Today() {
-  const { data, now, today, openForm } = useApp();
+  const { data, now, today, openForm, refresh, reload } = useApp();
+  const pull = usePullToRefresh(refresh ?? reload);
   const active = data.habits.filter((h) => !h.archived);
   // The fasting card owns timer habits, so they get no row here.
   const rows = active.filter((h) => h.done.type !== 'timer' &&
@@ -21,6 +24,7 @@ export function Today() {
 
   return (
     <main class="screen">
+      <PullIndicator {...pull} />
       <header class="top">
         <div>
           <div class="date">{longDate(today)}</div>

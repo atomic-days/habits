@@ -31,6 +31,8 @@ export interface AppState {
   today: DateKey;
   repo: DataRepo;
   reload(): Promise<void>;
+  /** Sends queued taps, then reloads from GitHub. Missing in a bare test context, which falls back to reload. */
+  refresh?(): Promise<void>;
   openForm(habitId: string | null): void;
   actions: Actions;
   /** Offline and outbox state. Missing in a bare test context, which reads as online and idle. */

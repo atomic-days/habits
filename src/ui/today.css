@@ -51,3 +51,12 @@ h2 { margin: 20px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform:
 .connect-steps { margin: 8px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
 .connect-steps a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
 .connect-steps .faint { font-size: 13px; margin-top: -6px; }
+
+/* Pull to refresh: the indicator starts above the screen and slides down with the finger. */
+.ptr { position: fixed; top: calc(env(safe-area-inset-top) - 32px); left: 50%; margin-left: -16px; width: 32px; height: 32px; color: var(--muted); z-index: 5; pointer-events: none; transition: transform 200ms ease-out, opacity 200ms ease-out; }
+.ptr.dragging { transition: none; }
+.ptr.refreshing .ptr-spinner { animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ptr { transition: none; }
+}
