@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  AuthError, ConflictError, NotFoundRepoError, RateLimitError, getFile, getRepo, listDir, putFile, updateFile,
+  AuthError, ConflictError, NetworkError, NotFoundRepoError, RateLimitError, getFile, getRepo, listDir, putFile, updateFile,
   type DataRepo,
 } from './github.ts';
 
@@ -18,6 +18,14 @@ const res = (status: number, body: unknown = {}) =>
 afterEach(() => vi.unstubAllGlobals());
 
 describe('github client', () => {
+  test('a rejected fetch throws NetworkError, and other errors keep their type', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Load failed')));
+    await expect(getFile(repo, 'data/x.json')).rejects.toBeInstanceOf(NetworkError);
+    await expect(putFile(repo, 'data/x.json', {}, null, 'm')).rejects.toBeInstanceOf(NetworkError);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res(401)));
+    await expect(getFile(repo, 'data/x.json')).rejects.toBeInstanceOf(AuthError);
+  });
+
   test('getFile decodes base64 split across lines and sends headers', async () => {
     const enc = b64('{"a":"Café"}\n');
     const split = enc.slice(0, 8) + '\n' + enc.slice(8);

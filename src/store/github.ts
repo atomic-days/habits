@@ -4,6 +4,8 @@ export class AuthError extends Error {}
 export class ConflictError extends Error {}
 export class NotFoundRepoError extends Error {}
 export class RateLimitError extends Error {}
+/** fetch rejected, so there was no response at all. Usually the phone is offline. */
+export class NetworkError extends Error {}
 
 const API = 'https://api.github.com';
 
@@ -21,16 +23,21 @@ function decodeBase64(b64: string): string {
 }
 
 async function request(r: DataRepo, suffix: string, init: RequestInit = {}): Promise<Response> {
-  const res = await fetch(`${API}/repos/${r.owner}/${r.repo}${suffix}`, {
-    ...init,
-    // GitHub sends max-age=60 on contents GETs. A retry after a 409 must not re-read a cached sha.
-    cache: 'no-store',
-    headers: {
-      Authorization: `Bearer ${r.token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API}/repos/${r.owner}/${r.repo}${suffix}`, {
+      ...init,
+      // GitHub sends max-age=60 on contents GETs. A retry after a 409 must not re-read a cached sha.
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${r.token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+  } catch (e) {
+    throw new NetworkError(e instanceof Error ? e.message : 'network request failed');
+  }
   if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
     throw new RateLimitError('GitHub is rate-limiting requests');
   }

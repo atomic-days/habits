@@ -9,7 +9,7 @@ vi.mock('./github.ts', async (orig) => {
 
 import * as gh from './github.ts';
 import {
-  deleteHabit, healthShas, loadAll, removeLog, saveHabit, setArchived, startFast, updateFast, upsertLog,
+  deleteHabit, endFast, healthShas, loadAll, loadFromCache, removeLog, saveHabit, setArchived, startFast, updateFast, upsertLog,
 } from './repo.ts';
 
 const repo = { owner: 'o', repo: 'r', token: 't' };
@@ -72,6 +72,7 @@ describe('loadAll', () => {
       get: (p) => (p === 'data/health/2026-11.json'
         ? { sha: 'sha-data/health/2026-11.json', json: { '2026-11-01': { steps: 5 } } } : null),
       set: vi.fn(),
+      paths: () => [],
     };
     const d = await loadAll(repo, cache);
     expect(d.health['2026-11-01'].steps).toBe(5);
@@ -79,11 +80,21 @@ describe('loadAll', () => {
     expect(fetched).not.toContain('data/health/2026-11.json');
   });
 
+  test('loadAll caches habits.json and fasts.json so loadFromCache can find them', async () => {
+    files['data/habits.json'] = { habits: [habit('a')] };
+    files['data/fasts.json'] = { fasts: [] };
+    const cache: FileCache = { get: () => null, set: vi.fn(), paths: () => [] };
+    await loadAll(repo, cache);
+    expect(cache.set).toHaveBeenCalledWith('data/habits.json', 'sha-data/habits.json', { habits: [habit('a')] });
+    expect(cache.set).toHaveBeenCalledWith('data/fasts.json', 'sha-data/fasts.json', { fasts: [] });
+  });
+
   test('a changed sha is fetched and cached', async () => {
     files['data/health/2026-11.json'] = { '2026-11-01': { steps: 9 } };
     const cache: FileCache = {
       get: () => ({ sha: 'old', json: { '2026-11-01': { steps: 5 } } }),
       set: vi.fn(),
+      paths: () => [],
     };
     const d = await loadAll(repo, cache);
     expect(d.health['2026-11-01'].steps).toBe(9);
@@ -160,8 +171,84 @@ describe('mutations', () => {
     expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toHaveLength(2);
   });
 
+  test('startFast uses a supplied id', async () => {
+    const f = await startFast(repo, '2026-11-06T20:02:00-05:00', 'phone-id');
+    expect(f).toEqual({ id: 'phone-id', start: '2026-11-06T20:02:00-05:00', end: null });
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toEqual([f]);
+  });
+
+  test('startFast with a running fast keeps the earlier start', async () => {
+    files['data/fasts.json'] = { fasts: [{ id: 'run', start: '2026-11-06T20:00:00-05:00', end: null }] };
+    const later = await startFast(repo, '2026-11-06T20:30:00-05:00', 'phone-id');
+    expect(later.id).toBe('run');
+    expect(later.start).toBe('2026-11-06T20:00:00-05:00');
+    const earlier = await startFast(repo, '2026-11-06T19:00:00-05:00', 'phone-id');
+    expect(earlier).toEqual({ id: 'run', start: '2026-11-06T19:00:00-05:00', end: null });
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toEqual([earlier]);
+  });
+
+  test('startFast with an id already stored adds nothing', async () => {
+    files['data/fasts.json'] = { fasts: [{ id: 'phone-id', start: '2026-11-06T20:02:00-05:00', end: '2026-11-07T08:00:00-05:00' }] };
+    await startFast(repo, '2026-11-06T20:02:00-05:00', 'phone-id');
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toHaveLength(1);
+  });
+
+  test('endFast ends the fast with that id, or the running one when the id is missing', async () => {
+    files['data/fasts.json'] = { fasts: [
+      { id: 'a', start: '2026-11-05T10:00:00-05:00', end: '2026-11-05T20:00:00-05:00' },
+      { id: 'run', start: '2026-11-06T20:00:00-05:00', end: null },
+    ] };
+    await endFast(repo, 'nope', '2026-11-07T10:00:00-05:00');
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts[1].end).toBe('2026-11-07T10:00:00-05:00');
+    await endFast(repo, 'a', '2026-11-05T21:00:00-05:00');
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts[0].end).toBe('2026-11-05T21:00:00-05:00');
+    await endFast(repo, 'nope', '2026-11-08T10:00:00-05:00'); // nothing running: no change
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts[1].end).toBe('2026-11-07T10:00:00-05:00');
+  });
+
   test('healthShas maps each health file path to its sha', async () => {
     files['data/health/2026-10.json'] = {};
     expect(await healthShas(repo)).toEqual({ 'data/health/2026-10.json': 'sha-data/health/2026-10.json' });
+  });
+});
+
+describe('loadFromCache', () => {
+  function fakeCache(entries: Record<string, unknown>): FileCache {
+    return {
+      get: (p) => (p in entries ? { sha: 's', json: entries[p] } : null),
+      set: () => {},
+      paths: () => Object.keys(entries),
+    };
+  }
+
+  test('rebuilds AppData from all four kinds of cached files', () => {
+    const cache = fakeCache({
+      'data/habits.json': { habits: [habit('a')] },
+      'data/fasts.json': { fasts: [{ id: 'f', start: '2026-11-06T20:00:00-05:00', end: null }] },
+      'data/log/2025.json': { entries: [entry('a', '2025-12-31')] },
+      'data/log/2026.json': { entries: [entry('a', '2026-11-05')] },
+      'data/health/2026-10.json': { '2026-10-30': { steps: 5, syncedAt: '2026-10-30T21:00:00-04:00' } },
+      'data/health/2026-11.json': { '2026-11-05': { steps: 9, syncedAt: '2026-11-05T21:00:00-05:00' } },
+      'other/file.json': { x: 1 },
+    });
+    expect(loadFromCache(cache)).toEqual({
+      habits: [habit('a')],
+      logs: [entry('a', '2025-12-31'), entry('a', '2026-11-05')],
+      fasts: [{ id: 'f', start: '2026-11-06T20:00:00-05:00', end: null }],
+      health: {
+        '2026-10-30': { steps: 5, syncedAt: '2026-10-30T21:00:00-04:00' },
+        '2026-11-05': { steps: 9, syncedAt: '2026-11-05T21:00:00-05:00' },
+      },
+      healthSyncedAt: '2026-11-05T21:00:00-05:00',
+    });
+  });
+
+  test('a cache with only habits.json gives empty logs, fasts and health', () => {
+    expect(loadFromCache(fakeCache({ 'data/habits.json': { habits: [] } })))
+      .toEqual({ habits: [], logs: [], fasts: [], health: {}, healthSyncedAt: null });
+  });
+
+  test('returns null without habits.json', () => {
+    expect(loadFromCache(fakeCache({ 'data/fasts.json': { fasts: [] } }))).toBeNull();
   });
 });

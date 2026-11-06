@@ -1,6 +1,7 @@
 export interface FileCache {
   get(path: string): { sha: string; json: unknown } | null;
   set(path: string, sha: string, json: unknown): void;
+  paths(): string[];
 }
 
 const KEY = 'habits.cache.v1';
@@ -19,6 +20,7 @@ function read(): Store {
 export function localCache(): FileCache {
   return {
     get: (path) => read()[path] ?? null,
+    paths: () => Object.keys(read()),
     set: (path, sha, json) => {
       const all = read();
       all[path] = { sha, json };

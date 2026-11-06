@@ -24,6 +24,33 @@ async function readCached<T>(r: DataRepo, f: { path: string; sha: string }, cach
   return file.json;
 }
 
+function buildData(
+  habits: Habit[], fasts: Fast[], logs: (LogFile | null)[], months: (Record<DateKey, HealthDay> | null)[],
+): AppData {
+  const health: Record<DateKey, HealthDay> = {};
+  let healthSyncedAt: string | null = null;
+  for (const month of months) {
+    for (const [date, day] of Object.entries(month ?? {})) {
+      health[date] = day;
+      if (day.syncedAt && (healthSyncedAt === null || day.syncedAt > healthSyncedAt)) healthSyncedAt = day.syncedAt;
+    }
+  }
+  return { habits, logs: logs.flatMap((l) => l?.entries ?? []), fasts, health, healthSyncedAt };
+}
+
+/** Rebuilds AppData from the files loadAll last cached. Null when habits.json was never cached. */
+export function loadFromCache(cache: FileCache): AppData | null {
+  const habits = cache.get(HABITS);
+  if (!habits) return null;
+  const under = (dir: string) => cache.paths().filter((p) => p.startsWith(`${dir}/`) && p.endsWith('.json')).sort();
+  return buildData(
+    (habits.json as { habits: Habit[] }).habits ?? [],
+    ((cache.get(FASTS)?.json as { fasts: Fast[] } | undefined)?.fasts) ?? [],
+    under(LOG_DIR).map((p) => cache.get(p)!.json as LogFile),
+    under(HEALTH_DIR).map((p) => cache.get(p)!.json as Record<DateKey, HealthDay>),
+  );
+}
+
 export async function loadAll(r: DataRepo, cache?: FileCache): Promise<AppData> {
   // A mistyped repo would 404 on every file below and look like an empty repo.
   await getRepo(r);
@@ -36,21 +63,9 @@ export async function loadAll(r: DataRepo, cache?: FileCache): Promise<AppData> 
   const logs = await Promise.all(logFiles.map((f) => readCached<LogFile>(r, f, cache)));
   const months = await Promise.all(healthFiles.map((f) => readCached<Record<DateKey, HealthDay>>(r, f, cache)));
 
-  const health: Record<DateKey, HealthDay> = {};
-  let healthSyncedAt: string | null = null;
-  for (const month of months) {
-    for (const [date, day] of Object.entries(month ?? {})) {
-      health[date] = day;
-      if (day.syncedAt && (healthSyncedAt === null || day.syncedAt > healthSyncedAt)) healthSyncedAt = day.syncedAt;
-    }
-  }
-  return {
-    habits: habits?.json.habits ?? [],
-    logs: logs.flatMap((l) => l?.entries ?? []),
-    fasts: fasts?.json.fasts ?? [],
-    health,
-    healthSyncedAt,
-  };
+  if (habits) cache?.set(HABITS, habits.sha, habits.json);
+  if (fasts) cache?.set(FASTS, fasts.sha, fasts.json);
+  return buildData(habits?.json.habits ?? [], fasts?.json.fasts ?? [], logs, months);
 }
 
 function mutateHabits(r: DataRepo, message: string, fn: (hs: Habit[]) => Habit[]) {
@@ -91,19 +106,33 @@ function mutateFasts(r: DataRepo, message: string, fn: (fs: Fast[]) => Fast[]) {
   return updateFile<{ fasts: Fast[] }>(r, FASTS, { fasts: [] }, (c) => ({ fasts: fn(c.fasts) }), message);
 }
 
-export async function startFast(r: DataRepo, start: string): Promise<Fast> {
-  let result: Fast = { id: crypto.randomUUID(), start, end: null };
+export async function startFast(r: DataRepo, start: string, id: string = crypto.randomUUID()): Promise<Fast> {
+  let result: Fast = { id, start, end: null };
   // The check runs inside the callback so a conflict retry and a second device both see the latest file.
   await mutateFasts(r, 'Start fast', (fs) => {
-    const running = fs.find((f) => f.end === null);
-    if (running) {
-      result = running;
+    const same = fs.find((f) => f.id === id);
+    if (same) {
+      result = same; // already stored, so a retried queue op adds nothing
       return fs;
     }
-    result = { id: result.id, start, end: null };
+    const running = fs.find((f) => f.end === null);
+    if (running) {
+      // Two starts for one fast: the earlier time is the real one.
+      result = Date.parse(start) < Date.parse(running.start) ? { ...running, start } : running;
+      return fs.map((f) => (f === running ? result : f));
+    }
+    result = { id, start, end: null };
     return [...fs, result];
   });
   return result;
+}
+
+/** Ends the fast with this id. If no such fast exists, ends the running one, if any. */
+export async function endFast(r: DataRepo, id: string, end: string): Promise<void> {
+  await mutateFasts(r, 'End fast', (fs) => {
+    const target = fs.find((f) => f.id === id) ?? fs.find((f) => f.end === null);
+    return target ? fs.map((f) => (f === target ? { ...f, end } : f)) : fs;
+  });
 }
 
 export async function updateFast(r: DataRepo, id: string, patch: { start?: string; end?: string | null }): Promise<void> {
