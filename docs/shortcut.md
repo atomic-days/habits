@@ -1,6 +1,6 @@
 # Habits sync shortcut
 
-This builds a shortcut called "Habits sync" in the iOS Shortcuts app. It reads your Health data day by day and sends it to the data repo. You need the habits-shortcut token from `docs/setup.md`.
+This builds a shortcut called "Habits sync" in the iOS Shortcuts app. It reads your Health data day by day and sends it to the data repo. You need the habits token from `docs/setup.md`, the same one the app uses.
 
 The shortcut takes a number of days as input. With no input, it uses 7.
 
