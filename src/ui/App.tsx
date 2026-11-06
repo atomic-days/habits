@@ -6,6 +6,7 @@ import { localCache } from '../store/cache.ts';
 import * as store from '../store/repo.ts';
 import { clearConfig, loadConfig, saveConfig } from './config.ts';
 import { AppContext, type Actions, type AppState } from './AppContext.tsx';
+import { HabitForm } from './HabitForm.tsx';
 import { Today } from './Today.tsx';
 import { TokenSetup } from './TokenSetup.tsx';
 import './app.css';
@@ -96,10 +97,7 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
   return (
     <AppContext.Provider value={state}>
       {form ? (
-        <div class="screen">
-          <h1>Habit form</h1>
-          <button type="button" onClick={() => setForm(null)}>Close</button>
-        </div>
+        <HabitForm habitId={form.habitId} onClose={() => setForm(null)} />
       ) : (
         <Today />
       )}
