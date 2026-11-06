@@ -83,6 +83,20 @@ describe('parseInbox', () => {
     expect(r.skipped).toBe(0);
   });
 
+  test('reads sleep stages given as HealthKit numbers: 0 in bed, 2 awake, 1, 3, 4 and 5 asleep', () => {
+    const r = parse(
+      'sleep|2026-11-05T22:00:00-05:00|2026-11-06T06:00:00-05:00|0|',
+      'sleep|2026-11-05T23:00:00-05:00|2026-11-06T00:00:00-05:00|1|',
+      'sleep|2026-11-06T00:00:00-05:00|2026-11-06T00:10:00-05:00|2|',
+      'sleep|2026-11-06T00:10:00-05:00|2026-11-06T01:10:00-05:00|3|',
+      'sleep|2026-11-06T01:10:00-05:00|2026-11-06T02:10:00-05:00|4|',
+      'sleep|2026-11-06T02:10:00-05:00|2026-11-06T03:10:00-05:00|5|',
+      'sleep|2026-11-06T03:10:00-05:00|2026-11-06T04:10:00-05:00|6|',
+    );
+    expect(r.days['2026-11-06'].sleepMinutes).toBe(240);
+    expect(r.skipped).toBe(1);
+  });
+
   test('a night counts for the date whose 18:00-to-18:00 window holds the sample end', () => {
     const r = parse(
       'sleep|2026-11-04T13:00:00-05:00|2026-11-04T14:00:00-05:00|Asleep|', // afternoon nap, 11-04

@@ -70,8 +70,15 @@ function minutesBetween(start: string, end: string): number {
   return ms / 60_000;
 }
 
-/** Asleep stages count. In Bed and Awake are known but don't. Anything else is a bad line. */
+/**
+ * Asleep stages count. In Bed and Awake are known but don't. Anything else is a bad line.
+ * A bare number is HKCategoryValueSleepAnalysis: 0 in bed, 1 unspecified, 2 awake, 3 core, 4 deep, 5 REM.
+ */
 function asleep(stage: string): boolean {
+  if (/^\d$/.test(stage)) {
+    if (Number(stage) > 5) throw new BadLine(`unknown sleep stage ${stage}`);
+    return stage !== '0' && stage !== '2';
+  }
   if (/\b(in ?bed|awake)\b/i.test(stage)) return false;
   if (/\b(asleep|core|deep|rem|unspecified)\b/i.test(stage)) return true;
   throw new BadLine(`unknown sleep stage ${stage}`);
