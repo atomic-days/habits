@@ -52,3 +52,11 @@ export function hoursBetween(startIso: string, endIso: string | Date): number {
   const end = typeof endIso === 'string' ? new Date(endIso) : endIso;
   return (end.getTime() - new Date(startIso).getTime()) / 3_600_000;
 }
+
+/** ISO timestamp in the device's local zone, e.g. 2026-11-06T11:52:00-05:00. */
+export function localIso(d: Date): string {
+  const off = -d.getTimezoneOffset();
+  const sign = off < 0 ? '-' : '+';
+  const abs = Math.abs(off);
+  return `${toDateKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}

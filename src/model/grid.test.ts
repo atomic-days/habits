@@ -142,3 +142,14 @@ test('weekdays number habit: days that are not due are notDue', () => {
   expect(cellOf(h, emptyData(), '2026-11-05').state).toBe('notDue'); // Thu
   expect(cellOf(h, emptyData(), '2026-11-06').state).toBe('notDue'); // Fri
 });
+
+test('days before a habit starts are notDue', () => {
+  const daily = habit({ id: 'dn', created: '2026-11-04', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'daily' }] });
+  const wk = habit({ id: 'wk', created: '2026-11-04', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'weekdays', days: ['mon', 'tue', 'wed', 'thu', 'fri'] }] });
+  for (const h of [daily, wk]) {
+    expect(cellOf(h, emptyData(), '2026-11-03').state).toBe('notDue');
+    expect(cellOf(h, emptyData(), '2026-10-01').state).toBe('notDue');
+    expect(cellOf(h, emptyData(), '2026-11-05').state).toBe('missed');
+    expect(cellOf(h, emptyData(), today).state).toBe('duePending');
+  }
+});

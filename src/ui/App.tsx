@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
 import type { AppData } from '../model/types.ts';
-import { toDateKey } from '../model/dates.ts';
+import { toDateKey, localIso } from '../model/dates.ts';
 import { AuthError, NotFoundRepoError, type DataRepo } from '../store/github.ts';
 import { localCache } from '../store/cache.ts';
 import * as store from '../store/repo.ts';
@@ -51,11 +51,11 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
       await load(repo);
     };
     return {
-      markDone: (habit, date) => run(() => store.upsertLog(repo, { habit, date, value: 1, at: now().toISOString() }))(),
+      markDone: (habit, date) => run(() => store.upsertLog(repo, { habit, date, value: 1, at: localIso(now()) }))(),
       undoDone: (habit, date) => run(() => store.removeLog(repo, habit, date))(),
-      setNumber: (habit, date, value) => run(() => store.upsertLog(repo, { habit, date, value, at: now().toISOString() }))(),
-      startFast: run(() => store.startFast(repo, now().toISOString())),
-      endFast: (id) => run(() => store.updateFast(repo, id, { end: now().toISOString() }))(),
+      setNumber: (habit, date, value) => run(() => store.upsertLog(repo, { habit, date, value, at: localIso(now()) }))(),
+      startFast: run(() => store.startFast(repo, localIso(now()))),
+      endFast: (id) => run(() => store.updateFast(repo, id, { end: localIso(now()) }))(),
       editFast: (id, patch) => run(() => store.updateFast(repo, id, patch))(),
       saveHabit: (h) => run(() => store.saveHabit(repo, h))(),
       setArchived: (id, archived) => run(() => store.setArchived(repo, id, archived))(),

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { fastHours, validateFast } from '../model/fasting.ts';
 import { streak } from '../model/streaks.ts';
-import { toDateKey } from '../model/dates.ts';
+import { toDateKey, localIso } from '../model/dates.ts';
 import type { Fast } from '../model/types.ts';
 import { useApp } from './AppContext.tsx';
 import { FastRing } from './FastRing.tsx';
@@ -19,7 +19,7 @@ function toInput(iso: string): string {
 function parseInput(v: string): string | null {
   if (!v) return null;
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  return Number.isNaN(d.getTime()) ? null : localIso(d);
 }
 
 export function FastCard() {
@@ -53,7 +53,7 @@ export function FastCard() {
   }
 
   const hours = fastHours(running, now);
-  const goalAt = new Date(new Date(running.start).getTime() + goal * 3_600_000).toISOString();
+  const goalAt = localIso(new Date(new Date(running.start).getTime() + goal * 3_600_000));
   const n = streak(habit, data, today, now).current;
 
   function openEdit(f: Fast) {

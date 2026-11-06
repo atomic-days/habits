@@ -79,8 +79,15 @@ function timerCell(h: Habit, d: AppData, date: DateKey, now: Date): Cell {
   return level(hours < goal - 2 ? 1 : hours < goal ? 2 : hours < goal + 2 ? 3 : 4);
 }
 
+function firstFrom(h: Habit): DateKey {
+  return h.schedules.reduce((m, s) => (s.from < m ? s.from : m), h.schedules[0].from);
+}
+
 function cellFor(h: Habit, d: AppData, date: DateKey, today: DateKey, now: Date): Cell {
   if (date > today) return { date, state: 'future', level: 0 };
+  if (date < h.created || h.schedules.length === 0 || date < firstFrom(h)) {
+    return { date, state: 'notDue', level: 0 };
+  }
   const base = h.done.type === 'check' ? checkCell(h, d, date, today, now)
     : h.done.type === 'number' ? numberCell(h, d, date, now)
     : timerCell(h, d, date, now);

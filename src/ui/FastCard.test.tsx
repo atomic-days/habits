@@ -73,7 +73,7 @@ test('Edit times saves valid times', async () => {
   const [start] = Array.from(document.querySelectorAll('input[type="datetime-local"]')) as HTMLInputElement[];
   fireEvent.input(start, { target: { value: '2026-11-05T16:00' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(a.editFast).toHaveBeenCalledWith('f1', { start: new Date('2026-11-05T16:00').toISOString(), end: null });
+  expect(a.editFast).toHaveBeenCalledWith('f1', { start: '2026-11-05T16:00:00-05:00', end: null });
 });
 
 test('no card without a timer habit', () => {

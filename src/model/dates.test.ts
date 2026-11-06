@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import {
-  toDateKey, dateKeyAt, addDays, dayOfWeek, weekdayOf, weekStart, monthKey, daysBetween, hoursBetween,
+  toDateKey, dateKeyAt, addDays, dayOfWeek, weekdayOf, weekStart, monthKey, daysBetween, hoursBetween, localIso,
 } from './dates.ts';
 
 test('toDateKey uses local time', () => {
@@ -29,4 +29,9 @@ test('monthKey and daysBetween', () => {
 test('hoursBetween spans the fall-back change', () => {
   expect(hoursBetween('2026-10-31T20:00:00-04:00', '2026-11-01T12:00:00-05:00')).toBe(17);
   expect(hoursBetween('2026-11-06T10:00:00-05:00', new Date('2026-11-06T11:30:00-05:00'))).toBe(1.5);
+});
+
+test('localIso carries the local offset', () => {
+  expect(localIso(new Date('2026-11-06T16:52:00Z'))).toBe('2026-11-06T11:52:00-05:00');
+  expect(localIso(new Date('2026-07-04T16:05:09Z'))).toBe('2026-07-04T12:05:09-04:00');
 });
