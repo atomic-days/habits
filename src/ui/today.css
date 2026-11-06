@@ -26,3 +26,14 @@ h2 { margin: 20px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform:
 .fast-edit { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .fast-edit label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 13px; }
 .fast-edit input { min-height: 44px; padding: 0 10px; background: var(--control); color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 16px; }
+.streak-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.streak-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: 14px; min-width: 0; }
+.streak-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 13px; }
+.streak-name { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; min-width: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.mini-grid { display: flex; gap: 2px; }
+.mini-week { display: flex; flex-direction: column; gap: 2px; }
+.mini-cell { width: 9px; height: 9px; border-radius: 2px; display: block; }
+.streak-num { font-size: 22px; font-weight: 700; }
+.streak-now { font-size: 13px; }
+.streak-goal { font-size: 12px; }
