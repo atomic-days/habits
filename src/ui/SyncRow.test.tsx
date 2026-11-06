@@ -116,3 +116,16 @@ test('coming back after more than 5 minutes does not poll', async () => {
   await comeBack();
   expect(screen.queryByText('Waiting for Apple Health…')).toBeNull();
 });
+
+test('offline disables Sync now and says why', () => {
+  cleanup();
+  render(
+    <AppContext.Provider value={{
+      data: seedData(), now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
+      reload, openForm: () => {}, actions: {} as AppState['actions'],
+      sync: { offline: true, pending: 0, syncing: false, syncedAt: null },
+    }}><SyncRow /></AppContext.Provider>,
+  );
+  expect((screen.getByRole('button', { name: 'Sync now' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByText('Needs a connection')).toBeTruthy();
+});

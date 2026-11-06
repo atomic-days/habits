@@ -26,7 +26,8 @@ function differs(before: Record<string, string>, now: Record<string, string>): b
 }
 
 export function SyncRow() {
-  const { data, now, repo, reload } = useApp();
+  const { data, now, repo, reload, sync } = useApp();
+  const offline = sync?.offline ?? false;
   const [phase, setPhase] = useState<Phase>('idle');
   const polling = useRef<number | null>(null);
   const latest = useRef({ repo, reload });
@@ -109,7 +110,10 @@ export function SyncRow() {
         {phase === 'waiting' && <div class="faint" role="status">Waiting for Apple Health…</div>}
         {phase === 'failed' && <div class="error" role="status">Sync didn't arrive. Try again.</div>}
       </div>
-      <button type="button" onClick={() => void syncNow()}>Sync now</button>
+      <div class="syncaction">
+        <button type="button" disabled={offline} onClick={() => void syncNow()}>Sync now</button>
+        {offline && <div class="faint">Needs a connection</div>}
+      </div>
     </section>
   );
 }

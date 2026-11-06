@@ -120,6 +120,18 @@ describe('flush', () => {
     expect(box.list()).toEqual([]);
   });
 
+  test('an op added while a flush is running is sent by that flush', async () => {
+    const box = localOutbox();
+    box.add({ type: 'startFast', args: { id: 'p' }, at: 'a' });
+    vi.mocked(store.startFast).mockImplementation(async () => {
+      box.add({ type: 'markDone', args: { habit: 'h', date: 'd' }, at: 'b' });
+      return {} as never;
+    });
+    await flush(repo, box);
+    expect(store.upsertLog).toHaveBeenCalledTimes(1);
+    expect(box.list()).toEqual([]);
+  });
+
   test('only one flush runs at a time', async () => {
     const box = queue();
     let release!: () => void;

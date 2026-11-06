@@ -76,7 +76,8 @@ export function flush(r: DataRepo, outbox: Outbox): Promise<FlushResult> {
 
 async function run(r: DataRepo, outbox: Outbox): Promise<FlushResult> {
   const result: FlushResult = { sent: [], dropped: [], stopped: null };
-  for (const op of outbox.list()) {
+  // Re-read the head each time so a tap made during the flush is picked up too.
+  for (let op = outbox.list()[0]; op; op = outbox.list()[0]) {
     try {
       await send(r, op);
       outbox.remove(op.id);

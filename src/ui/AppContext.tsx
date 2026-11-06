@@ -15,6 +15,16 @@ export interface Actions {
   deleteHabit(id: string): Promise<void>;
 }
 
+export interface SyncInfo {
+  /** The last attempt to reach GitHub failed with no response. */
+  offline: boolean;
+  /** Changes in the outbox that GitHub doesn't have yet. */
+  pending: number;
+  syncing: boolean;
+  /** When the synced data was last loaded from GitHub, as a local ISO time. */
+  syncedAt: string | null;
+}
+
 export interface AppState {
   data: AppData;
   now: Date;
@@ -23,6 +33,8 @@ export interface AppState {
   reload(): Promise<void>;
   openForm(habitId: string | null): void;
   actions: Actions;
+  /** Offline and outbox state. Missing in a bare test context, which reads as online and idle. */
+  sync?: SyncInfo;
 }
 
 export const AppContext = createContext<AppState | null>(null);

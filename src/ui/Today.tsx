@@ -5,6 +5,7 @@ import { Archived } from './Archived.tsx';
 import { FastCard } from './FastCard.tsx';
 import { StreakCards } from './StreakCards.tsx';
 import { SyncRow } from './SyncRow.tsx';
+import { SyncStatus } from './SyncStatus.tsx';
 import { TodayRow } from './TodayRow.tsx';
 import { longDate, weekdayName } from './format.ts';
 import './today.css';
@@ -26,6 +27,8 @@ export function Today() {
         </div>
         <button type="button" class="add" aria-label="Add habit" onClick={() => openForm(null)}>+</button>
       </header>
+
+      <SyncStatus />
 
       <SyncRow />
 
