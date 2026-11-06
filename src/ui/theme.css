@@ -1,0 +1,13 @@
+:root {
+  --bg:#0f1115; --card:#171a1f; --card-hi:#1e232b; --border:#23272e; --control:#1d2127;
+  --text:#e8eaed; --text-2:#c9d1d9; --muted:#9aa3ad; --faint:#7d8590;
+  --cell-empty:#262a31; --cell-off:#1c1f24; --missed:#e0653a; --pending:#8a929c;
+  --accent:#9cc7ff; --danger:#f08a63;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
