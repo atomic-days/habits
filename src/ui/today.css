@@ -37,3 +37,4 @@ h2 { margin: 20px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform:
 .streak-num { font-size: 22px; font-weight: 700; }
 .streak-now { font-size: 13px; }
 .streak-goal { font-size: 12px; }
+.sync { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 8px; font-size: 14px; }
