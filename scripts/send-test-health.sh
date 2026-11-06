@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Posts the sample Health event to the data repo. Needs HABITS_TOKEN (the habits-shortcut token).
+# Posts the sample Health event to the data repo. Needs HABITS_TOKEN (the habits token).
 set -euo pipefail
 
 if [ -z "${HABITS_TOKEN:-}" ]; then
-  echo "HABITS_TOKEN is not set. Export the habits-shortcut token first." >&2
+  echo "HABITS_TOKEN is not set. Export the habits token first." >&2
   exit 1
 fi
 

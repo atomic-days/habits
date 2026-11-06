@@ -1,15 +1,19 @@
 # Setup
 
-The app lives at https://atomic-days.github.io/habits/. Your data lives in the private repo `dhruvmetha/habits-data`. Do these steps once.
+The app lives at https://atomic-days.github.io/habits/. Your data lives in the private repo `dhruvmetha/habits-data`. You only do these steps once.
 
-1. Create two fine-grained tokens at https://github.com/settings/personal-access-tokens/new. Name one "habits-app" and the other "habits-shortcut". For each one, set:
+1. Create one fine-grained token at https://github.com/settings/personal-access-tokens/new. Name it "habits" and set:
    - Resource owner: `dhruvmetha`
    - Repository access: only select repositories, then `habits-data`
    - Repository permissions > Contents: Read and write
    - Expiration: the longest one offered
 
-   GitHub shows each token once. Save both somewhere safe, such as a password manager.
+   GitHub shows the token once. Save it somewhere safe, such as a password manager. The app and the shortcut both use it.
 2. On the iPhone, open https://atomic-days.github.io/habits/ in Safari. Tap Share, then Add to Home Screen.
-3. Open the app from the new home-screen icon and paste the habits-app token there. Do not paste it in Safari. iOS gives the home-screen app its own storage, so a token pasted in Safari does not carry over.
-4. Check that the six seed habits appear.
-5. Build the Health shortcut by following `docs/shortcut.md`. It uses the habits-shortcut token.
+3. Open the app from the new home-screen icon and paste the token there. Do not paste it in Safari, because iOS keeps the home-screen app's storage separate from Safari's.
+4. Check that the six starting habits appear.
+5. Build the Health shortcut by following `docs/shortcut.md`, and paste the same token into it.
+6. Run the shortcut once by hand. Then run it once with the number 365 to bring in the past year.
+7. Turn on its three automations, as described in `docs/shortcut.md`.
+
+If the token ever leaks, delete it on GitHub, make a new one, and paste the new one into the app and the shortcut.

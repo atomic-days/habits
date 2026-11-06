@@ -96,7 +96,7 @@ Get Contents of URL settings:
 - URL: `https://api.github.com/repos/dhruvmetha/habits-data/dispatches`
 - Method: POST
 - Headers:
-  - `Authorization`: `Bearer ` followed by your habits-shortcut token
+  - `Authorization`: `Bearer ` followed by your habits token, the same one the app uses
   - `Accept`: `application/vnd.github+json`
   - `X-GitHub-Api-Version`: `2022-11-28`
 - Request Body: JSON, with these fields:
@@ -128,6 +128,6 @@ Open the shortcut and run it by hand. Enter 365 as the input when asked, or use 
 ## Troubleshooting
 
 - The app shows no new data. Open https://github.com/dhruvmetha/habits-data/actions and look at the latest "Health sync" run. Green means it merged. Red means open the run and read the failing step.
-- No run appears at all. The POST did not reach GitHub. Run `HABITS_TOKEN=<habits-shortcut token> scripts/send-test-health.sh` from the repo. It prints the HTTP status, and 204 is success. A 401 or 403 means the token is wrong, expired, or lacks Contents read and write. A 404 means the token cannot see `habits-data`. A 422 means the body was malformed.
+- No run appears at all. The POST did not reach GitHub. Run `HABITS_TOKEN=<habits token> scripts/send-test-health.sh` from the repo. It prints the HTTP status, and 204 is success. A 401 or 403 means the token is wrong, expired, or lacks Contents read and write. A 404 means the token cannot see `habits-data`. A 422 means the body was malformed.
 - A run failed while the phone was locked. Health data is unreadable while the phone is locked, so some automations fail or send empty days. This is expected. The next run sends the same days again and fixes it.
 - Older data overwrites nothing. The importer keeps the newer copy of each day.
