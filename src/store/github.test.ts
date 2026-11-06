@@ -127,4 +127,14 @@ describe('github client', () => {
     await expect(updateFile(repo, 'p', {}, (j) => j, 'm')).rejects.toBeInstanceOf(ConflictError);
     expect(f.mock.calls.filter((c) => c[1]?.method === 'PUT')).toHaveLength(3);
   });
+
+  test('every request bypasses the HTTP cache', async () => {
+    const f = vi.fn()
+      .mockResolvedValueOnce(res(200, { content: b64('{}'), sha: 's' }))
+      .mockResolvedValueOnce(res(200, { content: { sha: 'n' } }));
+    vi.stubGlobal('fetch', f);
+    await getFile(repo, 'p');
+    await putFile(repo, 'p', {}, 's', 'm');
+    for (const call of f.mock.calls) expect(call[1].cache).toBe('no-store');
+  });
 });

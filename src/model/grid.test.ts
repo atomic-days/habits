@@ -81,10 +81,9 @@ test('every_n_days check: done is 4, passed due date is missed', () => {
   expect(cellOf(h, d, '2026-10-20').state).toBe('empty');
 });
 
-test('daily check: done is 4, else empty', () => {
+test('daily check: done is 4', () => {
   const h = habit({ id: 'c', done: { type: 'check' } });
   expect(cellOf(h, checks(h, ['2026-11-01']), '2026-11-01')).toMatchObject({ state: 'level', level: 4 });
-  expect(cellOf(h, emptyData(), '2026-11-01').state).toBe('empty');
 });
 
 test('runs shade by that day\'s distance', () => {
@@ -119,4 +118,27 @@ test('cellStyle', () => {
   expect(cellStyle({ date: '', state: 'future', level: 0 }, 'blue').background).toBe('transparent');
   expect(cellStyle({ date: '', state: 'level', level: 4 }, 'cyan').background).toBe('#3fd0e3');
   expect(cellStyle({ date: '', state: 'level', level: 1 }, 'green').background).toBe(PALETTES.green[0]);
+});
+
+test('daily check: a past undone day is missed and today is duePending', () => {
+  const h = habit({ id: 'c', done: { type: 'check' } });
+  const d = checks(h, ['2026-11-04']);
+  expect(cellOf(h, d, '2026-11-04')).toMatchObject({ state: 'level', level: 4 });
+  expect(cellOf(h, d, '2026-11-03').state).toBe('missed');
+  expect(cellOf(h, d, '2026-11-06').state).toBe('duePending');
+  expect(cellOf(h, checks(h, ['2026-11-06']), '2026-11-06')).toMatchObject({ state: 'level', level: 4 });
+});
+
+test('per_week check habits keep empty cells for undone days', () => {
+  const h = habit({ id: 'w', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'per_week', count: 2 }] });
+  expect(cellOf(h, emptyData(), '2026-11-03').state).toBe('empty');
+  expect(cellOf(h, emptyData(), '2026-11-06').state).toBe('empty');
+});
+
+test('weekdays number habit: days that are not due are notDue', () => {
+  const h = habit({ id: 'n', done: { type: 'number', goal: 5, unit: 'x', source: 'manual' },
+    schedules: [{ from: '2026-01-01', type: 'weekdays', days: ['mon', 'wed'] }] });
+  expect(cellOf(h, emptyData(), '2026-11-04').state).toBe('empty'); // Wed, due
+  expect(cellOf(h, emptyData(), '2026-11-05').state).toBe('notDue'); // Thu
+  expect(cellOf(h, emptyData(), '2026-11-06').state).toBe('notDue'); // Fri
 });

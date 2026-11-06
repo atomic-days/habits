@@ -22,6 +22,8 @@ function decodeBase64(b64: string): string {
 async function request(r: DataRepo, suffix: string, init: RequestInit = {}): Promise<Response> {
   const res = await fetch(`${API}/repos/${r.owner}/${r.repo}${suffix}`, {
     ...init,
+    // GitHub sends max-age=60 on contents GETs. A retry after a 409 must not re-read a cached sha.
+    cache: 'no-store',
     headers: {
       Authorization: `Bearer ${r.token}`,
       Accept: 'application/vnd.github+json',

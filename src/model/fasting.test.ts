@@ -35,3 +35,17 @@ test('validateFast', () => {
   expect(validateFast('2026-11-06T13:00:00-05:00', null, now)).toBe("Start can't be in the future");
   expect(validateFast('2026-11-05T20:00:00-05:00', null, now)).toBeNull();
 });
+
+test('validateFast rejects times that do not parse', () => {
+  expect(validateFast('nope', null, now)).toBe('Enter a valid date and time');
+  expect(validateFast('2026-11-05T20:00:00-05:00', 'nope', now)).toBe('Enter a valid date and time');
+});
+test('bad times or goals never loop forever', () => {
+  expect(fastCreditDays(f('nope', null), 16, now)).toEqual([]);
+  expect(fastCreditDays(f('2026-11-05T20:00:00-05:00', 'nope'), 16, now)).toEqual([]);
+  expect(fastCreditDays(f('2026-11-05T20:00:00-05:00', null), NaN, now)).toEqual([]);
+  expect(fastCreditDays(f('2026-11-05T20:00:00-05:00', null), 0, now)).toEqual([]);
+  expect(fastCreditDays(f('2026-11-05T20:00:00-05:00', null), Infinity, now)).toEqual([]);
+  expect(fastHours(f('nope', null), now)).toBe(0);
+  expect(fastHours(f('2026-11-05T20:00:00-05:00', 'nope'), now)).toBe(0);
+});

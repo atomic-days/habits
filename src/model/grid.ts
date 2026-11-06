@@ -40,6 +40,7 @@ function checkCell(h: Habit, d: AppData, date: DateKey, today: DateKey, now: Dat
     return plain('missed');
   }
   if (done) return level(4);
+  if (s.type === 'daily') return plain(date === today ? 'duePending' : 'missed');
   if (s.type === 'every_n_days') {
     const prev = lastDone(h, d, date, now);
     if (prev !== null && date < today && daysBetween(prev, date) === s.n) return plain('missed');
@@ -56,6 +57,7 @@ function ratioLevel(value: number, goal: number): Level {
 function numberCell(h: Habit, d: AppData, date: DateKey, now: Date): Cell {
   const done = h.done;
   if (done.type !== 'number') return plain('empty');
+  if (scheduleOn(h, date)?.type === 'weekdays' && !isDueWeekday(h, date)) return plain('notDue');
   const value = dayValue(h, date, d, now);
   if (done.source === 'health' && done.healthType === 'workouts') {
     const hits = (d.health[date]?.workouts ?? []).filter(

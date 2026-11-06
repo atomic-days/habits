@@ -4,7 +4,8 @@ import { dateKeyAt, hoursBetween } from './dates.ts';
 const HOUR_MS = 3_600_000;
 
 export function fastHours(fast: Fast, now: Date): number {
-  return hoursBetween(fast.start, fast.end ?? now);
+  const hours = hoursBetween(fast.start, fast.end ?? now);
+  return Number.isFinite(hours) ? hours : 0;
 }
 
 /** Local day of each instant start + goalHours + 24k that falls at or before the end (or now). */
@@ -12,6 +13,8 @@ export function fastCreditDays(fast: Fast, goalHours: number, now: Date): DateKe
   const startMs = new Date(fast.start).getTime();
   const limit = fast.end === null ? now.getTime() : new Date(fast.end).getTime();
   const days: DateKey[] = [];
+  if (!Number.isFinite(startMs) || !Number.isFinite(limit)) return days;
+  if (!Number.isFinite(goalHours) || goalHours <= 0) return days;
   for (let k = 0; ; k++) {
     const t = startMs + (goalHours + 24 * k) * HOUR_MS;
     if (t > limit) break;
@@ -36,6 +39,9 @@ export function fastHoursOn(fasts: Fast[], date: DateKey, goalHours: number, now
 
 export function validateFast(start: string, end: string | null, now: Date): string | null {
   const startMs = new Date(start).getTime();
+  if (Number.isNaN(startMs) || (end !== null && Number.isNaN(new Date(end).getTime()))) {
+    return 'Enter a valid date and time';
+  }
   if (end !== null && new Date(end).getTime() <= startMs) return 'End must be after start';
   if (startMs > now.getTime()) return "Start can't be in the future";
   return null;
