@@ -42,7 +42,11 @@ jobs:
               exit 0
             fi
             echo "Push failed on attempt $attempt, resetting to origin/main"
-            git fetch origin main && git reset --hard origin/main
+            if ! { git fetch origin main && git reset --hard origin/main; }; then
+              # Drop this attempt's commit so the next attempt rebuilds and recommits it.
+              # Otherwise it finds nothing staged and exits 0 with the commit unpushed.
+              git reset --hard HEAD~1
+            fi
             sleep $((RANDOM % 9 + 2))
           done
           echo "Giving up after 5 attempts"

@@ -146,6 +146,20 @@ describe('mutations', () => {
     expect(fasts).toEqual([{ id: f.id, start: '2026-11-06T19:00:00-05:00', end: '2026-11-07T12:00:00-05:00' }]);
   });
 
+  test('startFast refuses when a fast is already running and returns it', async () => {
+    const first = await startFast(repo, '2026-11-06T20:00:00-05:00');
+    const second = await startFast(repo, '2026-11-06T20:01:00-05:00');
+    expect(second).toEqual(first);
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toEqual([first]);
+  });
+
+  test('startFast starts a new fast after the last one ended', async () => {
+    files['data/fasts.json'] = { fasts: [{ id: 'old', start: '2026-11-05T10:00:00-05:00', end: '2026-11-05T20:00:00-05:00' }] };
+    const f = await startFast(repo, '2026-11-06T20:00:00-05:00');
+    expect(f.id).not.toBe('old');
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toHaveLength(2);
+  });
+
   test('healthShas maps each health file path to its sha', async () => {
     files['data/health/2026-10.json'] = {};
     expect(await healthShas(repo)).toEqual({ 'data/health/2026-10.json': 'sha-data/health/2026-10.json' });

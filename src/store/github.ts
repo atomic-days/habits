@@ -3,6 +3,7 @@ export interface DataRepo { owner: string; repo: string; token: string }
 export class AuthError extends Error {}
 export class ConflictError extends Error {}
 export class NotFoundRepoError extends Error {}
+export class RateLimitError extends Error {}
 
 const API = 'https://api.github.com';
 
@@ -30,6 +31,9 @@ async function request(r: DataRepo, suffix: string, init: RequestInit = {}): Pro
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
+  if (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0') {
+    throw new RateLimitError('GitHub is rate-limiting requests');
+  }
   if (res.status === 401 || res.status === 403) {
     throw new AuthError(`GitHub rejected the token (${res.status})`);
   }

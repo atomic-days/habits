@@ -25,6 +25,20 @@ describe('validatePayload', () => {
 });
 
 describe('mergeHealth', () => {
+  test('keeps a stored day whose syncedAt is later than the payload sentAt', () => {
+    const stored = { '2026-11': { '2026-11-06': { steps: 900, syncedAt: '2026-11-06T07:31:00-05:00' } } };
+    const out = mergeHealth(stored, p('2026-11-06T07:30:00-05:00', {
+      '2026-11-06': { steps: 100 }, '2026-11-05': { steps: 7 },
+    }));
+    expect(out['2026-11']['2026-11-06']).toEqual({ steps: 900, syncedAt: '2026-11-06T07:31:00-05:00' });
+    expect(out['2026-11']['2026-11-05']).toEqual({ steps: 7, syncedAt: '2026-11-06T07:30:00-05:00' });
+  });
+  test('compares instants, not strings, across offsets', () => {
+    const stored = { '2026-11': { '2026-11-06': { steps: 900, syncedAt: '2026-11-06T12:29:00Z' } } };
+    const out = mergeHealth(stored, p('2026-11-06T07:30:00-05:00', { '2026-11-06': { steps: 100 } }));
+    expect(out['2026-11']['2026-11-06'].steps).toBe(100);
+  });
+
   test('replaces the stored day completely and sets syncedAt', () => {
     const a = mergeHealth({}, p('2026-11-05T21:00:00-05:00', { '2026-11-05': { steps: 9000, waterLiters: 2 } }));
     const b = mergeHealth(a, p('2026-11-06T07:30:00-05:00', { '2026-11-05': { steps: 100 } }));

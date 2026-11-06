@@ -92,9 +92,18 @@ function mutateFasts(r: DataRepo, message: string, fn: (fs: Fast[]) => Fast[]) {
 }
 
 export async function startFast(r: DataRepo, start: string): Promise<Fast> {
-  const fast: Fast = { id: crypto.randomUUID(), start, end: null };
-  await mutateFasts(r, 'Start fast', (fs) => [...fs, fast]);
-  return fast;
+  let result: Fast = { id: crypto.randomUUID(), start, end: null };
+  // The check runs inside the callback so a conflict retry and a second device both see the latest file.
+  await mutateFasts(r, 'Start fast', (fs) => {
+    const running = fs.find((f) => f.end === null);
+    if (running) {
+      result = running;
+      return fs;
+    }
+    result = { id: result.id, start, end: null };
+    return [...fs, result];
+  });
+  return result;
 }
 
 export async function updateFast(r: DataRepo, id: string, patch: { start?: string; end?: string | null }): Promise<void> {

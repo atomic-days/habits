@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
-  AuthError, ConflictError, NotFoundRepoError, getFile, getRepo, listDir, putFile, updateFile,
+  AuthError, ConflictError, NotFoundRepoError, RateLimitError, getFile, getRepo, listDir, putFile, updateFile,
   type DataRepo,
 } from './github.ts';
 
@@ -88,6 +88,21 @@ describe('github client', () => {
     await expect(putFile(repo, 'p', {}, null, 'm')).rejects.toBeInstanceOf(ConflictError);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res(422, { message: 'invalid request' })));
     await expect(putFile(repo, 'p', {}, null, 'm')).rejects.not.toBeInstanceOf(ConflictError);
+  });
+
+  test('a 403 with x-ratelimit-remaining 0 is a RateLimitError, not an AuthError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () =>
+      new Response('{}', { status: 403, headers: { 'x-ratelimit-remaining': '0' } })));
+    const err = await getFile(repo, 'p').catch((e) => e);
+    expect(err).toBeInstanceOf(RateLimitError);
+    expect(err).not.toBeInstanceOf(AuthError);
+    await expect(putFile(repo, 'p', {}, null, 'm')).rejects.toBeInstanceOf(RateLimitError);
+  });
+
+  test('a 403 with requests remaining is still an AuthError', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () =>
+      new Response('{}', { status: 403, headers: { 'x-ratelimit-remaining': '4999' } })));
+    await expect(getFile(repo, 'p')).rejects.toBeInstanceOf(AuthError);
   });
 
   test.each([401, 403])('%i rejects with AuthError on every call', async (status) => {

@@ -68,8 +68,12 @@ export function validatePayload(raw: unknown): HealthPayload {
 
 export function mergeHealth(files: Months, p: HealthPayload): Months {
   const out: Months = {};
+  const sentMs = Date.parse(p.sentAt);
   for (const [date, day] of Object.entries(p.days)) {
     const month = date.slice(0, 7);
+    // Runs can finish out of order. An older payload must not undo a newer copy of the day.
+    const stored = files[month]?.[date]?.syncedAt;
+    if (stored !== undefined && Date.parse(stored) > sentMs) continue;
     out[month] ??= { ...(files[month] ?? {}) };
     out[month][date] = { ...day, syncedAt: p.sentAt };
   }

@@ -5,10 +5,10 @@
       "name": "Steps",
       "color": "cyan",
       "archived": false,
-      "created": "2026-11-06",
+      "created": "2025-11-01",
       "schedules": [
         {
-          "from": "2026-11-06",
+          "from": "2025-11-01",
           "type": "daily"
         }
       ],
@@ -25,10 +25,10 @@
       "name": "Sleep",
       "color": "violet",
       "archived": false,
-      "created": "2026-11-06",
+      "created": "2025-11-01",
       "schedules": [
         {
-          "from": "2026-11-06",
+          "from": "2025-11-01",
           "type": "daily"
         }
       ],
@@ -62,10 +62,10 @@
       "name": "Runs",
       "color": "pink",
       "archived": false,
-      "created": "2026-11-06",
+      "created": "2025-11-01",
       "schedules": [
         {
-          "from": "2026-11-06",
+          "from": "2025-11-01",
           "type": "per_week",
           "count": 2
         }
@@ -73,7 +73,7 @@
       "done": {
         "type": "number",
         "goal": 1,
-        "unit": "count",
+        "unit": "runs",
         "source": "health",
         "healthType": "workouts",
         "workoutType": "running",
