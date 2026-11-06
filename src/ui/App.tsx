@@ -6,6 +6,7 @@ import { localCache } from '../store/cache.ts';
 import * as store from '../store/repo.ts';
 import { clearConfig, loadConfig, saveConfig } from './config.ts';
 import { AppContext, type Actions, type AppState } from './AppContext.tsx';
+import { Today } from './Today.tsx';
 import { TokenSetup } from './TokenSetup.tsx';
 import './app.css';
 
@@ -100,7 +101,7 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
           <button type="button" onClick={() => setForm(null)}>Close</button>
         </div>
       ) : (
-        <h1>Today</h1>
+        <Today />
       )}
     </AppContext.Provider>
   );
