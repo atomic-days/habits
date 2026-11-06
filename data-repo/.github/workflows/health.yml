@@ -1,0 +1,49 @@
+name: Health sync
+
+on:
+  repository_dispatch:
+    types: [health]
+
+permissions:
+  contents: write
+
+# No concurrency group on purpose. GitHub drops queued runs in a group,
+# and backfill sends many events. Each run retries from origin/main instead.
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: <org>/habits
+          path: app
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Import and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            node app/health-import/cli.ts
+            sentAt=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")).client_payload.sentAt)')
+            git add data/health
+            if git diff --cached --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+            git commit -m "Health sync $sentAt"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt, resetting to origin/main"
+            git fetch origin main && git reset --hard origin/main
+            sleep $((RANDOM % 9 + 2))
+          done
+          echo "Giving up after 5 attempts"
+          exit 1

@@ -1,0 +1,124 @@
+{
+  "habits": [
+    {
+      "id": "steps",
+      "name": "Steps",
+      "color": "cyan",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "daily"
+        }
+      ],
+      "done": {
+        "type": "number",
+        "goal": 10000,
+        "unit": "steps",
+        "source": "health",
+        "healthType": "steps"
+      }
+    },
+    {
+      "id": "sleep",
+      "name": "Sleep",
+      "color": "violet",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "daily"
+        }
+      ],
+      "done": {
+        "type": "number",
+        "goal": 7,
+        "unit": "hours",
+        "source": "health",
+        "healthType": "sleep"
+      }
+    },
+    {
+      "id": "fasting",
+      "name": "Fasting",
+      "color": "amber",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "daily"
+        }
+      ],
+      "done": {
+        "type": "timer",
+        "goalHours": 16
+      }
+    },
+    {
+      "id": "runs",
+      "name": "Runs",
+      "color": "pink",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "per_week",
+          "count": 2
+        }
+      ],
+      "done": {
+        "type": "number",
+        "goal": 1,
+        "unit": "count",
+        "source": "health",
+        "healthType": "workouts",
+        "workoutType": "running",
+        "measure": "count",
+        "minDistanceKm": 1
+      }
+    },
+    {
+      "id": "laundry",
+      "name": "Laundry",
+      "color": "blue",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "weekdays",
+          "days": [
+            "fri"
+          ]
+        }
+      ],
+      "done": {
+        "type": "check"
+      }
+    },
+    {
+      "id": "cleaning",
+      "name": "Cleaning",
+      "color": "blue",
+      "archived": false,
+      "created": "2026-11-06",
+      "schedules": [
+        {
+          "from": "2026-11-06",
+          "type": "weekdays",
+          "days": [
+            "wed",
+            "sun"
+          ]
+        }
+      ],
+      "done": {
+        "type": "check"
+      }
+    }
+  ]
+}
