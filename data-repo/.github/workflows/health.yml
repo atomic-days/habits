@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          repository: <org>/habits
+          repository: atomic-days/habits
           path: app
 
       - uses: actions/setup-node@v4
