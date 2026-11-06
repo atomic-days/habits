@@ -19,3 +19,10 @@ h2 { margin: 20px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform:
 .bar { height: 6px; margin-top: 8px; background: var(--cell-empty); border-radius: 3px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--accent); }
 .earlier { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.fast { margin-bottom: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+.fast-top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.fast-info { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.ring-clock { font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-weight: 600; }
+.fast-edit { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.fast-edit label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 13px; }
+.fast-edit input { min-height: 44px; padding: 0 10px; background: var(--control); color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 16px; }
