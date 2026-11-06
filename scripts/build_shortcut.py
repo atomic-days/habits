@@ -25,13 +25,13 @@ DEFAULT_REPO = 'dhruvmetha/habits-data'
 DEFAULT_DAYS = '7'
 
 # (kind written on each line, Find Health Samples type label, group by day).
-# The labels are ActionKit's own names. Exercise and Mindful are the least certain;
-# see "Open questions" in shortcut/FORMAT-NOTES.md.
+# The labels are ActionKit's own names; see "Open questions" in shortcut/FORMAT-NOTES.md.
+# Find Health Samples stops the whole shortcut when a type has no samples in the window,
+# so only types the user actually records belong here. Water and mindful minutes were
+# dropped on 2026-11-06 after "No samples for water" stopped the first real run.
 KINDS = [
     ('steps', 'Steps', True),
     ('exercise', 'Exercise Time', True),
-    ('water', 'Water', True),
-    ('mindful', 'Mindful Minutes', False),
     ('sleep', 'Sleep', False),
 ]
 
