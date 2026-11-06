@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+.screen, .setup, .status { max-width: 430px; margin: 0 auto; padding: 16px; }
+.setup label { display: block; margin: 16px 0; color: var(--muted); font-size: 14px; }
+.setup input { display: block; width: 100%; min-height: 44px; margin-top: 6px; padding: 0 12px; background: var(--control); color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 16px; }
+.hint { color: var(--faint); font-size: 13px; }
+.error { color: var(--danger); }
+button { min-height: 44px; min-width: 44px; padding: 0 16px; background: var(--control); color: var(--text); border: 1px solid var(--border); border-radius: 10px; font-size: 15px; }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
