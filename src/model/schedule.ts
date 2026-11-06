@@ -62,6 +62,18 @@ export function dueToday(h: Habit, d: AppData, today: DateKey, now: Date): { due
   }
 }
 
+/**
+ * A weekdays check habit whose due day was yesterday, isn't done, and has no due day today.
+ * The spec counts a set-day habit done one day late, so Today keeps it for one more day.
+ */
+export function dueYesterday(h: Habit, d: AppData, today: DateKey, now: Date): boolean {
+  if (h.done.type !== 'check') return false;
+  const y = addDays(today, -1);
+  const s = scheduleOn(h, y);
+  if (s === null || s.type !== 'weekdays' || !s.days.includes(weekdayOf(y)) || y < h.created) return false;
+  return completions(h, y, d, now) === 0 && !dueToday(h, d, today, now).due;
+}
+
 const NEXT_DUE_HORIZON = 400;
 
 /**

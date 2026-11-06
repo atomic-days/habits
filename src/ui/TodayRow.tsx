@@ -2,12 +2,13 @@ import { useState } from 'preact/hooks';
 import type { Habit } from '../model/types.ts';
 import { addDays } from '../model/dates.ts';
 import { dayValue, isMet } from '../model/values.ts';
-import { dueToday, scheduleOn } from '../model/schedule.ts';
+import { dueToday, dueYesterday, scheduleOn } from '../model/schedule.ts';
 import { streak } from '../model/streaks.ts';
 import { useApp } from './AppContext.tsx';
+import { fire } from './fire.ts';
 import { number, shortDay, timeOfDay } from './format.ts';
 
-const EARLIER_DAYS = 6;
+const EARLIER_DAYS = 7;
 
 export function TodayRow({ habit }: { habit: Habit }) {
   const { data, now, today, actions } = useApp();
@@ -18,6 +19,9 @@ export function TodayRow({ habit }: { habit: Habit }) {
   const met = isMet(habit, today, data, now);
   const schedule = scheduleOn(habit, today);
   const progress = dueToday(habit, data, today, now).progress;
+  // Grace day: the row is here for yesterday's tick-off, so Mark done logs yesterday.
+  const late = done.type === 'check' && !met && dueYesterday(habit, data, today, now);
+  const target = late ? addDays(today, -1) : today;
 
   let periodLine: string | null = null;
   if (progress && schedule) {
@@ -35,17 +39,19 @@ export function TodayRow({ habit }: { habit: Habit }) {
       <div class="row-main">
         <h3>{habit.name}</h3>
 
-        {done.type === 'check' && (met ? (
+        {done.type === 'check' && (
           <div class="row-actions">
-            <span class="done">Done</span>
-            <button type="button" onClick={() => actions.undoDone(habit.id, today)}>Undo</button>
-          </div>
-        ) : (
-          <div class="row-actions">
-            <button type="button" class="primary" onClick={() => actions.markDone(habit.id, today)}>Mark done</button>
+            {met ? (
+              <>
+                <span class="done">Done</span>
+                <button type="button" onClick={() => fire(actions.undoDone(habit.id, today))}>Undo</button>
+              </>
+            ) : (
+              <button type="button" class="primary" onClick={() => fire(actions.markDone(habit.id, target))}>Mark done</button>
+            )}
             <button type="button" aria-label={`More for ${habit.name}`} aria-expanded={more} onClick={() => setMore(!more)}>⋯</button>
           </div>
-        ))}
+        )}
 
         {done.type === 'number' && done.source === 'health' && (
           <div class="value">
@@ -59,7 +65,7 @@ export function TodayRow({ habit }: { habit: Habit }) {
           <form class="row-actions" onSubmit={(e) => {
             e.preventDefault();
             const n = Number(draft ?? value);
-            if (draft !== null && draft !== '' && Number.isFinite(n)) void actions.setNumber(habit.id, today, n);
+            if (draft !== null && draft !== '' && Number.isFinite(n)) fire(actions.setNumber(habit.id, today, n));
           }}>
             <input type="number" inputMode="decimal" aria-label={habit.name} placeholder={done.unit}
               value={draft ?? (value === null ? '' : String(value))} onInput={(e) => setDraft(e.currentTarget.value)} />
@@ -73,6 +79,7 @@ export function TodayRow({ habit }: { habit: Habit }) {
           <div class="bar-fill" style={{ width: `${Math.min(100, (value / done.goal) * 100)}%` }} />
         </div>
       )}
+      {late && <p class="note">Due yesterday</p>}
       {nudge && <p class="note">{nudge}</p>}
       {periodLine && <p class="note">{periodLine}</p>}
       {done.type === 'number' && done.source === 'health' && value !== null && data.health[today]?.syncedAt && (
@@ -81,11 +88,15 @@ export function TodayRow({ habit }: { habit: Habit }) {
 
       {more && done.type === 'check' && (
         <div class="earlier">
-          {Array.from({ length: EARLIER_DAYS }, (_, i) => addDays(today, -(i + 1))).map((day) => (
-            <button type="button" key={day} onClick={() => { setMore(false); void actions.markDone(habit.id, day); }}>
-              {shortDay(day)}
-            </button>
-          ))}
+          {Array.from({ length: EARLIER_DAYS }, (_, i) => addDays(today, -(i + 1))).map((day) => {
+            const isDone = isMet(habit, day, data, now);
+            return (
+              <button type="button" key={day} aria-pressed={isDone} aria-label={isDone ? `${shortDay(day)}, done` : undefined}
+                onClick={() => { setMore(false); fire(isDone ? actions.undoDone(habit.id, day) : actions.markDone(habit.id, day)); }}>
+                {shortDay(day)}{isDone ? ' ✓' : ''}
+              </button>
+            );
+          })}
         </div>
       )}
     </li>

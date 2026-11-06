@@ -52,13 +52,14 @@ test('Sync now stores the start time and shas, then opens the shortcut', async (
   expect(hrefSet).toEqual(['shortcuts://run-shortcut?name=Habits%20sync&input=text&text=7']);
 });
 
-test('a changed sha on the third poll reloads once', async () => {
+test('a change on the third poll, then a quiet poll, reloads once', async () => {
   healthShas.mockResolvedValue({ f: 'a1' });
   await tapSync();
   healthShas.mockReset();
   healthShas.mockResolvedValueOnce({ f: 'a1' }).mockResolvedValueOnce({ f: 'a1' }).mockResolvedValue({ f: 'b2' });
   await comeBack();
   expect(screen.getByText('Waiting for Apple Health…')).toBeTruthy();
+  await tick(10_000);
   await tick(10_000);
   await tick(10_000);
   expect(reload).not.toHaveBeenCalled();
@@ -68,6 +69,34 @@ test('a changed sha on the third poll reloads once', async () => {
   expect(reload).toHaveBeenCalledTimes(1);
   expect(localStorage.getItem('habits.syncStartedAt')).toBeNull();
   expect(screen.queryByText('Waiting for Apple Health…')).toBeNull();
+});
+
+test('a second month file landing after the first is still caught before the reload', async () => {
+  healthShas.mockResolvedValue({ a: '1', b: '1' });
+  await tapSync();
+  healthShas.mockReset();
+  healthShas.mockResolvedValueOnce({ a: '2', b: '1' }).mockResolvedValue({ a: '2', b: '2' });
+  await comeBack();
+  await tick(10_000);
+  await tick(10_000);
+  expect(reload).not.toHaveBeenCalled();
+  await tick(10_000);
+  expect(reload).toHaveBeenCalledTimes(1);
+});
+
+test('files that keep changing reload once at the 120 second limit', async () => {
+  healthShas.mockResolvedValue({ f: 'a1' });
+  await tapSync();
+  let n = 0;
+  healthShas.mockReset();
+  healthShas.mockImplementation(async () => ({ f: `v${n++}` }));
+  await comeBack();
+  await tick(110_000);
+  expect(reload).not.toHaveBeenCalled();
+  await tick(10_000);
+  expect(reload).toHaveBeenCalledTimes(1);
+  await tick(60_000);
+  expect(reload).toHaveBeenCalledTimes(1);
 });
 
 test('no change in 120 seconds shows the failure', async () => {

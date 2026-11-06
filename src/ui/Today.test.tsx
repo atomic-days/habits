@@ -8,7 +8,7 @@ import type { AppData } from '../model/types.ts';
 vi.mock('../store/repo', () => ({}));
 afterEach(cleanup);
 
-function setup(data: AppData = seedData()) {
+function setup(data: AppData = seedData(), today = '2026-11-06', now = SEED_NOW) {
   const actions = {
     markDone: vi.fn(async () => {}), undoDone: vi.fn(async () => {}), setNumber: vi.fn(async () => {}),
     startFast: vi.fn(async () => {}), endFast: vi.fn(async () => {}), editFast: vi.fn(async () => {}),
@@ -16,7 +16,7 @@ function setup(data: AppData = seedData()) {
   };
   const openForm = vi.fn();
   const state: AppState = {
-    data, now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
+    data, now, today, repo: { owner: 'o', repo: 'r', token: 't' },
     reload: async () => {}, openForm, actions,
   };
   render(<AppContext.Provider value={state}><Today /></AppContext.Provider>);
@@ -93,4 +93,75 @@ test('an archived habit appears nowhere', () => {
     schedules: [{ from: '2026-01-01', type: 'daily' }], done: { type: 'check' } });
   setup(d);
   expect(screen.queryByText('Old habit')).toBeNull();
+});
+
+const SATURDAY = new Date('2026-11-07T09:00:00-05:00');
+
+test('Friday laundry not done shows on Saturday as due yesterday and logs Friday', () => {
+  const { actions } = setup(seedData(), '2026-11-07', SATURDAY);
+  expect(row('Laundry').getByText('Due yesterday')).toBeTruthy();
+  fireEvent.click(row('Laundry').getByRole('button', { name: 'Mark done' }));
+  expect(actions.markDone).toHaveBeenCalledWith('laundry', '2026-11-06');
+});
+
+test('Friday laundry done on Friday has no row on Saturday', () => {
+  const d = seedData();
+  d.logs.push({ habit: 'laundry', date: '2026-11-06', value: 1, at: '2026-11-06T21:00:00-05:00' });
+  setup(d, '2026-11-07', SATURDAY);
+  expect(screen.queryByText('Laundry', { selector: 'h3' })).toBeNull();
+});
+
+test('the earlier-days menu covers yesterday back to 7 days ago', () => {
+  setup();
+  fireEvent.click(row('Laundry').getByRole('button', { name: 'More for Laundry' }));
+  const labels = Array.from(document.querySelectorAll('.earlier button')).map((b) => b.textContent);
+  expect(labels).toHaveLength(7);
+  expect(labels[0]).toBe('Thu Nov 5');
+  expect(labels[6]).toBe('Fri Oct 30');
+});
+
+test('the menu shows done days and tapping one undoes it', () => {
+  const d = seedData();
+  d.logs.push({ habit: 'laundry', date: '2026-11-04', value: 1, at: '2026-11-04T21:00:00-05:00' });
+  const { actions } = setup(d);
+  fireEvent.click(row('Laundry').getByRole('button', { name: 'More for Laundry' }));
+  const done = row('Laundry').getByRole('button', { name: 'Wed Nov 4, done' });
+  expect(done.getAttribute('aria-pressed')).toBe('true');
+  fireEvent.click(done);
+  expect(actions.undoDone).toHaveBeenCalledWith('laundry', '2026-11-04');
+  expect(actions.markDone).not.toHaveBeenCalled();
+});
+
+test('the menu stays available once today is done', () => {
+  const d = seedData();
+  d.logs.push({ habit: 'laundry', date: '2026-11-06', value: 1, at: '2026-11-06T09:00:00-05:00' });
+  const { actions } = setup(d);
+  fireEvent.click(row('Laundry').getByRole('button', { name: 'More for Laundry' }));
+  fireEvent.click(row('Laundry').getByRole('button', { name: 'Fri Oct 30' }));
+  expect(actions.markDone).toHaveBeenCalledWith('laundry', '2026-10-30');
+});
+
+test('Archived (N) lists archived habits and opens the form', () => {
+  const d = seedData();
+  d.habits.push({ id: 'old', name: 'Old habit', color: 'green', archived: true, created: '2026-01-01',
+    schedules: [{ from: '2026-01-01', type: 'daily' }], done: { type: 'check' } });
+  const { openForm } = setup(d);
+  expect(screen.queryByText('Old habit')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Archived (1)' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Old habit' }));
+  expect(openForm).toHaveBeenCalledWith('old');
+});
+
+test('no Archived button when nothing is archived', () => {
+  setup();
+  expect(screen.queryByRole('button', { name: /^Archived/ })).toBeNull();
+});
+
+test('Sync now sits under the header, above the fasting card and the streak cards', () => {
+  setup();
+  const sync = screen.getByLabelText('Apple Health sync');
+  const header = document.querySelector('header.top')!;
+  expect(header.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(sync.compareDocumentPosition(screen.getByTestId('fast-card')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(sync.compareDocumentPosition(screen.getByTestId('streak-cards')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

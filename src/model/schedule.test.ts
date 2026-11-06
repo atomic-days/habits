@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { scheduleOn, periodOf, lastDone, dueToday, nextDue, comingUp } from './schedule.ts';
+import { scheduleOn, periodOf, lastDone, dueToday, dueYesterday, nextDue, comingUp } from './schedule.ts';
 import { emptyData, habit } from './fixtures.ts';
 import type { AppData, Habit } from './types.ts';
 
@@ -96,4 +96,21 @@ test('comingUp skips non-check habits and sorts by date', () => {
   const sat = habit({ id: 'sat', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'weekdays', days: ['sat'] }] });
   const out = comingUp([steps, cleaning, sat], emptyData(), today, now);
   expect(out.map((o) => o.habit.id)).toEqual(['sat', 'cleaning']);
+});
+
+test('dueYesterday: a weekdays check habit missed yesterday is on its grace day', () => {
+  const sat = new Date('2026-11-07T09:00:00-05:00');
+  expect(dueYesterday(laundry, emptyData(), '2026-11-07', sat)).toBe(true);
+  const done: AppData = { ...emptyData(), logs: [{ habit: 'laundry', date: '2026-11-06', value: 1, at: '2026-11-06T20:00:00-05:00' }] };
+  expect(dueYesterday(laundry, done, '2026-11-07', sat)).toBe(false);
+});
+
+test('dueYesterday: not when today is itself due, before created, or for other types', () => {
+  const sat = new Date('2026-11-07T09:00:00-05:00');
+  const frisat = habit({ id: 'x', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'weekdays', days: ['fri', 'sat'] }] });
+  expect(dueYesterday(frisat, emptyData(), '2026-11-07', sat)).toBe(false);
+  const fresh = { ...laundry, created: '2026-11-07' };
+  expect(dueYesterday(fresh, emptyData(), '2026-11-07', sat)).toBe(false);
+  const daily = habit({ id: 'd', done: { type: 'check' }, schedules: [{ from: '2026-01-01', type: 'daily' }] });
+  expect(dueYesterday(daily, emptyData(), '2026-11-07', sat)).toBe(false);
 });

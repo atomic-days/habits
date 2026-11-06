@@ -45,22 +45,37 @@ export function SyncRow() {
     try { before = JSON.parse(read(SHAS_KEY) ?? '{}'); } catch { /* treat as empty */ }
     setPhase('waiting');
     let busy = false;
+    // Once a file changes, keep polling until a poll sees nothing new. The 7-day window can span
+    // two months, and the shortcut sends one event per month, so the second file can land later.
+    let seenChange = false;
+    let last = before;
     const begun = Date.now();
     polling.current = window.setInterval(async () => {
       if (busy) return;
       busy = true;
-      let changed = false;
+      let current: Record<string, string> | null = null;
       try {
-        changed = differs(before, await healthShas(latest.current.repo));
+        current = await healthShas(latest.current.repo);
       } catch { /* try again on the next tick */ }
       busy = false;
       if (polling.current === null) return;
-      if (changed) {
+      let settled = false;
+      if (current !== null) {
+        if (!seenChange) {
+          if (differs(before, current)) { seenChange = true; last = current; }
+        } else if (differs(last, current)) {
+          last = current;
+        } else {
+          settled = true;
+        }
+      }
+      const timedOut = Date.now() - begun >= GIVE_UP_MS;
+      if (settled || (timedOut && seenChange)) {
         stop();
         write(STARTED_KEY, null);
         setPhase('idle');
         await latest.current.reload();
-      } else if (Date.now() - begun >= GIVE_UP_MS) {
+      } else if (timedOut) {
         stop();
         write(STARTED_KEY, null);
         setPhase('failed');

@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/preact';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/preact';
 import { AppContext, type AppState } from './AppContext.tsx';
 import { FastCard } from './FastCard.tsx';
 import { seedData, SEED_NOW } from './testData.ts';
@@ -81,4 +81,65 @@ test('no card without a timer habit', () => {
   d.habits = d.habits.filter((h) => h.done.type !== 'timer');
   setup(d);
   expect(screen.queryByTestId('fast-card')).toBeNull();
+});
+
+test('Start fast is disabled while the write is in flight', async () => {
+  const a = setup(seedData());
+  let finish!: () => void;
+  a.startFast.mockImplementation(() => new Promise<void>((r) => { finish = r; }));
+  const btn = screen.getByRole('button', { name: 'Start fast' }) as HTMLButtonElement;
+  await act(async () => { fireEvent.click(btn); });
+  expect(btn.disabled).toBe(true);
+  await act(async () => { fireEvent.click(btn); });
+  expect(a.startFast).toHaveBeenCalledTimes(1);
+  await act(async () => { finish(); });
+  expect(btn.disabled).toBe(false);
+});
+
+test('Start fast re-enables after a failed write', async () => {
+  const a = setup(seedData());
+  a.startFast.mockRejectedValue(new Error('boom'));
+  const btn = screen.getByRole('button', { name: 'Start fast' }) as HTMLButtonElement;
+  fireEvent.click(btn);
+  await act(async () => {});
+  expect(btn.disabled).toBe(false);
+});
+
+function ended(): AppData {
+  const d = seedData();
+  d.fasts.push({ id: 'old', start: '2026-11-05T10:00:00-05:00', end: '2026-11-06T06:52:00-05:00' });
+  return d;
+}
+
+test('Edit last fast saves new times for the most recent ended fast', async () => {
+  const a = setup(ended());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit last fast' }));
+  const [start, end] = Array.from(document.querySelectorAll('input[type="datetime-local"]')) as HTMLInputElement[];
+  expect(start.value).toBe('2026-11-05T10:00');
+  expect(end.value).toBe('2026-11-06T06:52');
+  fireEvent.input(end, { target: { value: '2026-11-06T07:15' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await act(async () => {});
+  expect(a.editFast).toHaveBeenCalledWith('old', { start: '2026-11-05T10:00:00-05:00', end: '2026-11-06T07:15:00-05:00' });
+});
+
+test('Edit last fast rejects an end before the start and an empty end', () => {
+  const a = setup(ended());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit last fast' }));
+  const [, end] = Array.from(document.querySelectorAll('input[type="datetime-local"]')) as HTMLInputElement[];
+  fireEvent.input(end, { target: { value: '2026-11-05T09:00' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(screen.getByText('End must be after start')).toBeTruthy();
+  fireEvent.input(end, { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(screen.getByText('Enter a valid date and time')).toBeTruthy();
+  expect(a.editFast).not.toHaveBeenCalled();
+});
+
+test('no Edit last fast without an ended fast, or while one is running', () => {
+  setup(seedData());
+  expect(screen.queryByRole('button', { name: 'Edit last fast' })).toBeNull();
+  cleanup();
+  setup(running());
+  expect(screen.queryByRole('button', { name: 'Edit last fast' })).toBeNull();
 });

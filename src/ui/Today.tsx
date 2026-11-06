@@ -1,6 +1,7 @@
-import { dueToday, comingUp } from '../model/schedule.ts';
+import { dueToday, dueYesterday, comingUp } from '../model/schedule.ts';
 import { isMet } from '../model/values.ts';
 import { useApp } from './AppContext.tsx';
+import { Archived } from './Archived.tsx';
 import { FastCard } from './FastCard.tsx';
 import { StreakCards } from './StreakCards.tsx';
 import { SyncRow } from './SyncRow.tsx';
@@ -13,7 +14,7 @@ export function Today() {
   const active = data.habits.filter((h) => !h.archived);
   // The fasting card owns timer habits, so they get no row here.
   const rows = active.filter((h) => h.done.type !== 'timer' &&
-    (dueToday(h, data, today, now).due || isMet(h, today, data, now)));
+    (dueToday(h, data, today, now).due || isMet(h, today, data, now) || dueYesterday(h, data, today, now)));
   const upcoming = comingUp(active, data, today, now);
 
   return (
@@ -25,6 +26,8 @@ export function Today() {
         </div>
         <button type="button" class="add" aria-label="Add habit" onClick={() => openForm(null)}>+</button>
       </header>
+
+      <SyncRow />
 
       <FastCard />
 
@@ -47,7 +50,7 @@ export function Today() {
       )}
 
       <StreakCards />
-      <SyncRow />
+      <Archived />
     </main>
   );
 }
