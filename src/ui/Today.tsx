@@ -2,6 +2,7 @@ import { dueToday, dueYesterday, comingUp } from '../model/schedule.ts';
 import { isMet } from '../model/values.ts';
 import { useApp } from './AppContext.tsx';
 import { Archived } from './Archived.tsx';
+import { ConnectHealthCard } from './ConnectHealthCard.tsx';
 import { FastCard } from './FastCard.tsx';
 import { StreakCards } from './StreakCards.tsx';
 import { SyncRow } from './SyncRow.tsx';
@@ -31,6 +32,8 @@ export function Today() {
       <SyncStatus />
 
       <SyncRow />
+
+      <ConnectHealthCard />
 
       <FastCard />
 

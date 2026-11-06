@@ -1,4 +1,4 @@
-import { test, expect, vi, afterEach } from 'vitest';
+import { test, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/preact';
 import { AppContext, type AppState } from './AppContext.tsx';
 import { Today } from './Today.tsx';
@@ -6,6 +6,7 @@ import { seedData, SEED_NOW } from './testData.ts';
 import type { AppData } from '../model/types.ts';
 
 vi.mock('../store/repo', () => ({}));
+beforeEach(() => localStorage.clear());
 afterEach(cleanup);
 
 function setup(data: AppData = seedData(), today = '2026-11-06', now = SEED_NOW) {
@@ -164,4 +165,61 @@ test('Sync now sits under the header, above the fasting card and the streak card
   expect(header.compareDocumentPosition(sync) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(sync.compareDocumentPosition(screen.getByTestId('fast-card')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(sync.compareDocumentPosition(screen.getByTestId('streak-cards')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+function noHealth(): AppData {
+  return { ...seedData(), health: {}, healthSyncedAt: null };
+}
+const connectCard = () => screen.queryByRole('region', { name: 'Connect Apple Health' });
+
+test('with no Health data, a Connect Apple Health card lists three steps with their links', () => {
+  setup(noHealth());
+  const card = within(connectCard()!);
+  expect(card.getAllByRole('listitem')).toHaveLength(3);
+  // BASE_URL is /habits/ in the build and / under vitest.
+  expect(card.getByRole('link', { name: 'Add the Health shortcut' }).getAttribute('href'))
+    .toBe(`${import.meta.env.BASE_URL}habits-sync.shortcut`);
+  expect(card.getByRole('link', { name: 'Run it once and allow Health' }).getAttribute('href'))
+    .toBe('shortcuts://run-shortcut?name=Habits%20sync');
+  expect(card.getByRole('link', { name: 'Bring in the past year' }).getAttribute('href'))
+    .toBe('shortcuts://run-shortcut?name=Habits%20sync&input=text&text=365');
+});
+
+test('the card explains the three automations iOS needs added by hand', () => {
+  setup(noHealth());
+  const text = connectCard()!.textContent!;
+  expect(text).toContain('iOS needs automations added by hand');
+  expect(text).toContain('Automation');
+  expect(text).toContain('Apple Watch workout ends');
+  expect(text).toContain('7:30 AM');
+  expect(text).toContain('9:30 PM');
+  expect(text).toContain('Habits sync');
+  expect(text).toContain('Run Immediately');
+});
+
+test('the Connect Apple Health card is hidden once Health data exists', () => {
+  setup();
+  expect(connectCard()).toBeNull();
+});
+
+test('dismissing the Connect Apple Health card keeps it hidden next time', () => {
+  setup(noHealth());
+  fireEvent.click(within(connectCard()!).getByRole('button', { name: 'Dismiss' }));
+  expect(connectCard()).toBeNull();
+  cleanup();
+  setup(noHealth());
+  expect(connectCard()).toBeNull();
+});
+
+test('the card still works when storage is unavailable', () => {
+  const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied'); });
+  try {
+    setup(noHealth());
+    fireEvent.click(within(connectCard()!).getByRole('button', { name: 'Dismiss' }));
+    expect(connectCard()).toBeNull();
+  } finally {
+    getItem.mockRestore();
+    setItem.mockRestore();
+  }
 });
