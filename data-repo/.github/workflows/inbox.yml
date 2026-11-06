@@ -1,0 +1,59 @@
+name: Health inbox
+
+# The Habits sync shortcut PUTs one text file per run into data/inbox/ with the
+# user's own token, and a push made with a personal token starts this workflow.
+# Pushes made here use GITHUB_TOKEN, so they don't start it again.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/inbox/**'
+      - '!data/inbox/failed/**'
+
+permissions:
+  contents: write
+
+# No concurrency group, for the same reason as health.yml: GitHub drops queued
+# runs in a group. Each run imports whatever is in the inbox and retries from
+# origin/main, so two runs that overlap still import every file once.
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: atomic-days/habits
+          path: app
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Import and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            node app/health-import/inbox.ts
+            git add -A data
+            if git diff --cached --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+            git commit -m "Health inbox $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt, resetting to origin/main"
+            if ! { git fetch origin main && git reset --hard origin/main; }; then
+              # Drop this attempt's commit so the next attempt rebuilds and recommits it.
+              # Otherwise it finds nothing staged and exits 0 with the commit unpushed.
+              git reset --hard HEAD~1
+            fi
+            sleep $((RANDOM % 9 + 2))
+          done
+          echo "Giving up after 5 attempts"
+          exit 1
