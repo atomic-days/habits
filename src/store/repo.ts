@@ -139,6 +139,11 @@ export async function updateFast(r: DataRepo, id: string, patch: { start?: strin
   await mutateFasts(r, 'Update fast', (fs) => fs.map((f) => (f.id === id ? { ...f, ...patch } : f)));
 }
 
+/** Removes the fast with this id. A missing id changes nothing, so a retried or doubled op is safe. */
+export async function deleteFast(r: DataRepo, id: string): Promise<void> {
+  await mutateFasts(r, 'Delete fast', (fs) => fs.filter((f) => f.id !== id));
+}
+
 /** Maps each health file path to its current sha. */
 export async function healthShas(r: DataRepo): Promise<Record<string, string>> {
   return Object.fromEntries((await listJson(r, HEALTH_DIR)).map((f) => [f.path, f.sha]));

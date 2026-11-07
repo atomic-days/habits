@@ -9,6 +9,7 @@ export interface Actions {
   setNumber(habit: string, date: DateKey, value: number): Promise<void>;
   startFast(): Promise<void>;
   endFast(id: string): Promise<void>;
+  deleteFast(id: string): Promise<void>;
   editFast(id: string, patch: { start?: string; end?: string | null }): Promise<void>;
   saveHabit(h: Habit): Promise<void>;
   setArchived(id: string, archived: boolean): Promise<void>;

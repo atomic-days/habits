@@ -12,7 +12,7 @@ function setup(data: AppData) {
   const actions = {
     markDone: vi.fn(async () => {}), undoDone: vi.fn(async () => {}), setNumber: vi.fn(async () => {}),
     startFast: vi.fn(async () => {}), endFast: vi.fn(async () => {}), editFast: vi.fn(async () => {}),
-    saveHabit: vi.fn(async () => {}), setArchived: vi.fn(async () => {}), deleteHabit: vi.fn(async () => {}),
+    saveHabit: vi.fn(async () => {}), setArchived: vi.fn(async () => {}), deleteHabit: vi.fn(async () => {}), deleteFast: vi.fn(async () => {}),
   };
   const state: AppState = {
     data, now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
@@ -142,4 +142,44 @@ test('no Edit last fast without an ended fast, or while one is running', () => {
   cleanup();
   setup(running());
   expect(screen.queryByRole('button', { name: 'Edit last fast' })).toBeNull();
+});
+
+test('Discard asks first, and Discard deletes the running fast', () => {
+  const a = setup(running());
+  fireEvent.click(screen.getByRole('button', { name: 'Discard fast' }));
+  expect(screen.getByText("Discard this fast? It won't be saved.")).toBeTruthy();
+  expect(a.deleteFast).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(a.deleteFast).toHaveBeenCalledWith('f1');
+});
+
+test('Keep fasting does not delete anything', () => {
+  const a = setup(running());
+  fireEvent.click(screen.getByRole('button', { name: 'Discard fast' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Keep fasting' }));
+  expect(a.deleteFast).not.toHaveBeenCalled();
+  expect(screen.queryByText("Discard this fast? It won't be saved.")).toBeNull();
+});
+
+test('Delete fast in Edit times confirms, then deletes that fast', () => {
+  const a = setup(running());
+  fireEvent.click(screen.getByRole('button', { name: 'Edit times' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete fast' }));
+  expect(screen.getByText('Delete this fast?')).toBeTruthy();
+  expect(a.deleteFast).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  expect(a.deleteFast).toHaveBeenCalledWith('f1');
+});
+
+test('Delete fast in Edit last fast deletes the last ended fast, and Keep it backs out', () => {
+  const d = seedData();
+  d.fasts.push({ id: 'old', start: '2026-11-05T10:00:00-05:00', end: '2026-11-06T06:52:00-05:00' });
+  const a = setup(d);
+  fireEvent.click(screen.getByRole('button', { name: 'Edit last fast' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete fast' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+  expect(a.deleteFast).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Delete fast' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  expect(a.deleteFast).toHaveBeenCalledWith('old');
 });

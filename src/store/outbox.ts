@@ -53,6 +53,7 @@ function send(r: DataRepo, op: Op): Promise<unknown> {
     case 'startFast': return store.startFast(r, op.at, op.args.id);
     case 'endFast': return store.endFast(r, op.args.id, op.at);
     case 'editFast': return store.updateFast(r, op.args.id, op.args.patch);
+    case 'deleteFast': return store.deleteFast(r, op.args.id);
     case 'saveHabit': return store.saveHabit(r, op.args.habit);
     case 'setArchived': return store.setArchived(r, op.args.id, op.args.archived);
     case 'deleteHabit': return store.deleteHabit(r, op.args.id);

@@ -75,6 +75,13 @@ describe('applyOp', () => {
     expect(out.habits[0].archived).toBe(true);
   });
 
+  test('deleteFast removes that fast and keeps the others', () => {
+    const d = base();
+    d.fasts = [{ id: 'a', start: 's1', end: 'e1' }, { id: 'b', start: 's2', end: null }];
+    const out = applyOp(d, op({ type: 'deleteFast', args: { id: 'b' }, at: 'z' }));
+    expect(out.fasts.map((f) => f.id)).toEqual(['a']);
+  });
+
   test('deleteHabit removes the habit and its log entries', () => {
     const d = base();
     d.logs = [{ habit: 'floss', date: '2026-11-06', value: 1, at: 'x' }, { habit: 'read', date: '2026-11-06', value: 1, at: 'x' }];

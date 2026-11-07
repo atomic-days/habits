@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('./repo.ts', () => ({
   saveHabit: vi.fn(), setArchived: vi.fn(), deleteHabit: vi.fn(), upsertLog: vi.fn(), removeLog: vi.fn(),
-  startFast: vi.fn(), endFast: vi.fn(), updateFast: vi.fn(),
+  startFast: vi.fn(), endFast: vi.fn(), updateFast: vi.fn(), deleteFast: vi.fn(),
 }));
 
 import * as store from './repo.ts';
@@ -99,6 +99,15 @@ describe('flush', () => {
     const res = await flush(repo, box);
     expect(res.stopped).toBe('rate');
     expect(box.list()[0].attempts).toBe(0);
+  });
+
+  test('deleteFast calls store.deleteFast with the id', async () => {
+    const box = localOutbox();
+    box.add({ type: 'deleteFast', args: { id: 'f9' }, at: 'a' });
+    const res = await flush(repo, box);
+    expect(store.deleteFast).toHaveBeenCalledWith(repo, 'f9');
+    expect(res.sent).toHaveLength(1);
+    expect(box.list()).toEqual([]);
   });
 
   test('editFast, saveHabit, setArchived, deleteHabit, undoDone and setNumber call their repo functions', async () => {

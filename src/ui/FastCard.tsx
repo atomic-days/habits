@@ -30,6 +30,7 @@ export function FastCard() {
   const [startVal, setStartVal] = useState('');
   const [endVal, setEndVal] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<'discard' | 'delete' | null>(null);
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
   if (!habit || habit.done.type !== 'timer') return null;
@@ -42,6 +43,7 @@ export function FastCard() {
     setStartVal(toInput(f.start));
     setEndVal(f.end ? toInput(f.end) : '');
     setError(null);
+    setConfirm(null);
     setEditing(true);
   }
 
@@ -73,6 +75,12 @@ export function FastCard() {
     }
   }
 
+  function remove(f: Fast) {
+    setConfirm(null);
+    setEditing(false);
+    fire(actions.deleteFast(f.id));
+  }
+
   function editForm(f: Fast) {
     return (
       <form class="fast-edit" onSubmit={(e) => { e.preventDefault(); void save(f); }}>
@@ -84,6 +92,17 @@ export function FastCard() {
         </label>
         {error && <p class="error" role="alert">{error}</p>}
         <button type="submit" class="primary">Save</button>
+        {confirm === 'delete' ? (
+          <div class="fast-confirm" role="group" aria-label="Confirm delete">
+            <p>Delete this fast?</p>
+            <div class="row-actions">
+              <button type="button" onClick={() => setConfirm(null)}>Keep it</button>
+              <button type="button" class="fast-danger" onClick={() => remove(f)}>Delete</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" class="fast-danger" onClick={() => setConfirm('delete')}>Delete fast</button>
+        )}
       </form>
     );
   }
@@ -131,6 +150,17 @@ export function FastCard() {
         <button type="button" class="primary" onClick={() => fire(actions.endFast(running.id))}>End fast</button>
         <button type="button" onClick={() => (editing ? setEditing(false) : openEdit(running))}>Edit times</button>
       </div>
+      {confirm === 'discard' ? (
+        <div class="fast-confirm" role="group" aria-label="Confirm discard">
+          <p>Discard this fast? It won't be saved.</p>
+          <div class="row-actions">
+            <button type="button" onClick={() => setConfirm(null)}>Keep fasting</button>
+            <button type="button" class="fast-danger" onClick={() => remove(running)}>Discard</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" class="fast-quiet" onClick={() => setConfirm('discard')}>Discard fast</button>
+      )}
       {editing && editForm(running)}
     </section>
   );

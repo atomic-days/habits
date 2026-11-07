@@ -9,7 +9,7 @@ vi.mock('./github.ts', async (orig) => {
 
 import * as gh from './github.ts';
 import {
-  deleteHabit, endFast, healthShas, loadAll, loadFromCache, removeLog, saveHabit, setArchived, startFast, updateFast, upsertLog,
+  deleteFast, deleteHabit, endFast, healthShas, loadAll, loadFromCache, removeLog, saveHabit, setArchived, startFast, updateFast, upsertLog,
 } from './repo.ts';
 
 const repo = { owner: 'o', repo: 'r', token: 't' };
@@ -155,6 +155,16 @@ describe('mutations', () => {
     await updateFast(repo, f.id, { start: '2026-11-06T19:00:00-05:00' });
     const fasts = (files['data/fasts.json'] as { fasts: Fast[] }).fasts;
     expect(fasts).toEqual([{ id: f.id, start: '2026-11-06T19:00:00-05:00', end: '2026-11-07T12:00:00-05:00' }]);
+  });
+
+  test('deleteFast removes that fast, and a missing id is a no-op that resolves', async () => {
+    const a = await startFast(repo, '2026-11-06T20:00:00-05:00', 'a');
+    await endFast(repo, 'a', '2026-11-07T12:00:00-05:00');
+    await startFast(repo, '2026-11-08T20:00:00-05:00', 'b');
+    await deleteFast(repo, 'b');
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts.map((f) => f.id)).toEqual([a.id]);
+    await expect(deleteFast(repo, 'nope')).resolves.toBeUndefined();
+    expect((files['data/fasts.json'] as { fasts: Fast[] }).fasts).toHaveLength(1);
   });
 
   test('startFast refuses when a fast is already running and returns it', async () => {

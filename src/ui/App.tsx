@@ -182,6 +182,7 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
       setNumber: (habit, date, value) => enqueue({ type: 'setNumber', args: { habit, date, value }, at: at() }),
       startFast: () => enqueue({ type: 'startFast', args: { id: crypto.randomUUID() }, at: at() }),
       endFast: (id) => enqueue({ type: 'endFast', args: { id }, at: at() }),
+      deleteFast: (id) => enqueue({ type: 'deleteFast', args: { id }, at: at() }),
       editFast: (id, patch) => enqueue({ type: 'editFast', args: { id, patch }, at: at() }),
       saveHabit: (habit) => enqueue({ type: 'saveHabit', args: { habit }, at: at() }),
       setArchived: (id, archived) => enqueue({ type: 'setArchived', args: { id, archived }, at: at() }),

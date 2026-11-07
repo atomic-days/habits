@@ -12,7 +12,7 @@ vi.mock('../store/repo', () => ({
   loadFromCache: vi.fn(),
   saveHabit: vi.fn(),
   setArchived: vi.fn(),
-  deleteHabit: vi.fn(),
+  deleteHabit: vi.fn(), deleteFast: vi.fn(),
   upsertLog: vi.fn(),
   removeLog: vi.fn(),
   startFast: vi.fn(),

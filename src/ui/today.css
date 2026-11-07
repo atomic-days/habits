@@ -60,3 +60,7 @@ h2 { margin: 20px 0 8px; font-size: 13px; letter-spacing: .06em; text-transform:
 @media (prefers-reduced-motion: reduce) {
   .ptr { transition: none; }
 }
+.fast-quiet { display: block; margin-top: 8px; min-height: 44px; background: none; border: 0; color: var(--muted); font-size: 14px; }
+.fast-confirm { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; font-size: 14px; }
+.fast-confirm p { margin: 0; }
+.fast-danger { min-height: 44px; background: none; color: var(--danger); border: 1px solid var(--danger); }

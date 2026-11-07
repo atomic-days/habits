@@ -9,6 +9,7 @@ export type Op = Base & (
   | { type: 'startFast'; args: { id: string } }
   | { type: 'endFast'; args: { id: string } }
   | { type: 'editFast'; args: { id: string; patch: { start?: string; end?: string | null } } }
+  | { type: 'deleteFast'; args: { id: string } }
   | { type: 'saveHabit'; args: { habit: Habit } }
   | { type: 'setArchived'; args: { id: string; archived: boolean } }
   | { type: 'deleteHabit'; args: { id: string } }
@@ -48,6 +49,7 @@ export function applyOp(d: AppData, op: Op): AppData {
     case 'endFast': return endFast(d, op.args.id, op.at);
     case 'editFast':
       return { ...d, fasts: d.fasts.map((f) => (f.id === op.args.id ? { ...f, ...op.args.patch } : f)) };
+    case 'deleteFast': return { ...d, fasts: d.fasts.filter((f) => f.id !== op.args.id) };
     case 'saveHabit': {
       const h = op.args.habit;
       return { ...d, habits: d.habits.some((x) => x.id === h.id) ? d.habits.map((x) => (x.id === h.id ? h : x)) : [...d.habits, h] };
