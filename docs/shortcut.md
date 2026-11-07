@@ -52,10 +52,12 @@ python3 scripts/build_shortcut.py
 python3 scripts/check_shortcut.py
 ```
 
-On a Mac, sign it and copy it into the app:
+On a Mac, sign it so the signed file keeps the name "Habits sync":
 
 ```
-shortcuts sign --mode anyone --input "shortcut/Habits sync.shortcut" --output public/habits-sync.shortcut
+cd ~/Downloads && mkdir -p signed && shortcuts sign --mode anyone --input "Habits sync.shortcut" --output "signed/Habits sync.shortcut"
 ```
+
+AirDrop `signed/Habits sync.shortcut` to the iPhone. If an installed shortcut has another name, rename it to exactly "Habits sync", because the app runs it by that name.
 
 `shortcut/FORMAT-NOTES.md` explains every key the script writes and lists what is still unconfirmed.
