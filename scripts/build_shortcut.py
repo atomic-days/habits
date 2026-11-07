@@ -27,7 +27,8 @@ DEFAULT_DAYS = '7'
 # (kind written on each line, Find Health Samples type label, group by day).
 # The labels are ActionKit's own names; see "Open questions" in shortcut/FORMAT-NOTES.md.
 # Find Health Samples stops the whole shortcut when a type has no samples in the window,
-# so only types the user actually records belong here. Water and mindful minutes were
+# so only types the user actually records belong here. Grouped queries set Fill Missing, so
+# a day with no samples comes back as a zero sample instead of stopping the run. Water and mindful minutes were
 # dropped on 2026-11-06 after "No samples for water" stopped the first real run.
 KINDS = [
     ('steps', 'Steps', True),
@@ -36,6 +37,13 @@ KINDS = [
 ]
 
 OBJ = '￼'  # Shortcuts marks each inline variable with this character
+# Tells the importer that this file looked for runs, so a window with none clears the stored ones.
+RUNS_FLAG = 'runs|checked'
+# Apple Watch records Running Speed during running workouts. No built-in action reads workouts.
+RUN_SPEED_LABEL = 'Running Speed'
+# WFCondition for "is greater than" on a number (Cherri conditions map).
+GREATER_THAN = 2
+
 NS = uuid.UUID('6f1d7c52-3a5e-4f0b-9c1e-8a2b4d6e0f13')
 
 
@@ -128,16 +136,36 @@ def find_samples(name, label, start_ref, end_ref, by_day):
         'WFContentItemSortProperty': 'Start Date',
         'WFContentItemSortOrder': 'Oldest First',
         'WFContentItemLimitEnabled': False,
-        # The importer fills empty days with zeros, so Health sends only days that have data.
-        'WFHKSampleFilteringFillMissing': False,
+        # Grouped by day, Fill Missing turns an empty day into a zero sample instead of an error.
+        # An ungrouped query has no days to fill.
+        'WFHKSampleFilteringFillMissing': by_day,
     }
     if by_day:
         params['WFHKSampleFilteringGroupBy'] = 'Day'
     act('filter.health.quantity', params, name)
 
 
-def details(name, prop):
-    act('properties.health.quantity', {'WFInput': attachment(REPEAT_ITEM), 'WFContentItemPropertyName': prop}, name)
+def details(name, prop, source=REPEAT_ITEM):
+    act('properties.health.quantity', {'WFInput': attachment(source), 'WFContentItemPropertyName': prop}, name)
+
+
+def sample_lines(kind, samples_name):
+    """Repeats over a samples output and joins one `kind|start|end|value|unit` line per sample."""
+    act('repeat.each', {'GroupingIdentifier': uid(f'{kind} repeat'), 'WFControlFlowMode': 0,
+                        'WFInput': attachment(output(samples_name, 'Health Samples'))})
+    details(f'{kind} start', 'Start Date')
+    details(f'{kind} end', 'End Date')
+    details(f'{kind} value', 'Value')
+    details(f'{kind} unit', 'Unit')
+    iso(f'{kind} start iso', output(f'{kind} start', 'Start Date'))
+    iso(f'{kind} end iso', output(f'{kind} end', 'End Date'))
+    text(f'{kind} line', f'{kind}|', output(f'{kind} start iso', 'Formatted Date'), '|',
+         output(f'{kind} end iso', 'Formatted Date'), '|', output(f'{kind} value', 'Value'), '|',
+         output(f'{kind} unit', 'Unit'))
+    act('repeat.each', {'GroupingIdentifier': uid(f'{kind} repeat'), 'WFControlFlowMode': 2},
+        f'{kind} results')
+    act('text.combine', {'text': attachment(output(f'{kind} results', 'Repeat Results')),
+                         'WFTextSeparator': 'New Lines', 'Show-text': True}, f'{kind} lines')
 
 
 def build():
@@ -179,32 +207,35 @@ def build():
 
     # 4. The header line.
     text('header', 'window|', output('start iso', 'Formatted Date'), '|', output('now iso', 'Formatted Date'),
-         '|', output('now iso', 'Formatted Date'))
+         '|', output('now iso', 'Formatted Date'), '\n', RUNS_FLAG)
 
     # 5. One line per sample: kind|start|end|value|unit. Grouped kinds give one sample per day.
     for kind, label, by_day in KINDS:
         from_ref = output('sleep window start', 'Adjusted Date') if kind == 'sleep' else start
         find_samples(f'{kind} samples', label, from_ref, query_end, by_day)
-        act('repeat.each', {'GroupingIdentifier': uid(f'{kind} repeat'), 'WFControlFlowMode': 0,
-                            'WFInput': attachment(output(f'{kind} samples', 'Health Samples'))})
-        details(f'{kind} start', 'Start Date')
-        details(f'{kind} end', 'End Date')
-        details(f'{kind} value', 'Value')
-        details(f'{kind} unit', 'Unit')
-        iso(f'{kind} start iso', output(f'{kind} start', 'Start Date'))
-        iso(f'{kind} end iso', output(f'{kind} end', 'End Date'))
-        text(f'{kind} line', f'{kind}|', output(f'{kind} start iso', 'Formatted Date'), '|',
-             output(f'{kind} end iso', 'Formatted Date'), '|', output(f'{kind} value', 'Value'), '|',
-             output(f'{kind} unit', 'Unit'))
-        act('repeat.each', {'GroupingIdentifier': uid(f'{kind} repeat'), 'WFControlFlowMode': 2},
-            f'{kind} results')
-        act('text.combine', {'text': attachment(output(f'{kind} results', 'Repeat Results')),
-                             'WFTextSeparator': 'New Lines', 'Show-text': True}, f'{kind} lines')
+        sample_lines(kind, f'{kind} samples')
+
+    # 5b. Runs. Running Speed grouped by day never comes back empty (Fill Missing), so its sum says
+    # whether any run happened. Only then does the raw query run, and the importer builds the runs.
+    find_samples('speed days', RUN_SPEED_LABEL, start, query_end, True)
+    details('speed day values', 'Value', output('speed days', 'Health Samples'))
+    act('statistics', {'WFStatisticsOperation': 'Sum',
+                       'WFInput': attachment(output('speed day values', 'Value'))}, 'speed sum')
+    runs_if = uid('runs if')
+    act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 0, 'WFCondition': GREATER_THAN,
+                        'WFNumberValue': 0,
+                        'WFInput': {'Type': 'Variable', 'Variable': attachment(output('speed sum', 'Statistics'))}})
+    find_samples('speed samples', RUN_SPEED_LABEL, start, query_end, False)
+    sample_lines('runspeed', 'speed samples')
+    act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 1})
+    text('no runs', '')
+    act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 2}, 'runspeed block')
 
     # 6. Join, encode and upload. An empty kind leaves a blank line, which the importer skips.
     parts = [output('header', 'Text')]
     for kind, _, _ in KINDS:
         parts += ['\n', output(f'{kind} lines', 'Combined Text')]
+    parts += ['\n', output('runspeed block', 'If Result')]
     text('body', *parts)
     act('base64encode', {'WFInput': attachment(output('body', 'Text')), 'WFEncodeMode': 'Encode',
                          'WFBase64LineBreakMode': 'None'}, 'body base64')

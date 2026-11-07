@@ -64,6 +64,8 @@ All identifiers start with `is.workflow.actions.`.
 | Combine Text | `text.combine` | `text` (attachment), `WFTextSeparator: "New Lines"` (also `"Spaces"`, `"Custom"` with `WFTextCustomSeparator`) |
 | Base64 Encode | `base64encode` | `WFInput`, `WFEncodeMode: "Encode"`, `WFBase64LineBreakMode: "None"`. The default is "Every 76 Characters", so it must be set. |
 | Dictionary | `dictionary` | `WFItems: {Value: {WFDictionaryFieldValueItems: [...]}, WFSerializationType: "WFDictionaryFieldValue"}`. Each item is `{WFItemType, WFKey, WFValue}`, where `WFItemType` is 0 text, 1 dictionary, 2 array, 3 number, 4 boolean, and key and value are token strings. |
+| Calculate Statistics | `statistics` | `WFStatisticsOperation` (`"Sum"`; also `"Average"`, `"Minimum"`, `"Maximum"`, `"Median"`, `"Mode"`, `"Range"`, `"Standard Deviation"`), `WFInput` (attachment). Output label in the editor is "Statistics". |
+| If, number "is greater than" | `conditional` | `WFCondition: 2`, `WFNumberValue: 0`, `WFInput: {Type: "Variable", Variable: <attachment>}`. The other number codes are 0 less than, 1 at most, 3 at least. Code 4 is "is" and 100 "has any value". |
 | Get Contents of URL | `downloadurl` | `WFURL` (token string), `WFHTTPMethod: "PUT"`, `WFHTTPBodyType: "JSON"`, `WFJSONValues` (dictionary field value), `ShowHeaders: true`, `WFHTTPHeaders` (dictionary field value) |
 
 The shortcut builds the request body inline in `WFJSONValues` rather than with a separate Dictionary action. Cherri's `jsonRequest` and real exports do the same.
@@ -91,7 +93,7 @@ WFContentItemFilter = {
 - Operator 4 is "is". Operator 1001 is "is in the last" with `Number` and `Unit` 16 (days). Operator 1002 is "is today". Operator 1003 is "is between", with `Date` and `AnotherDate`.
 - Two real iCloud shortcuts use 1003 with `Date` and `AnotherDate` as `WFTextTokenAttachment`. One points both at Ask, the other at the outputs of earlier actions. The leftover `Number: "1"` and `Unit: 16` appear in both, and we copy them.
 - `WFHKSampleFilteringGroupBy` takes `"Minute"`, `"Hour"`, `"Day"`, `"Week"`, `"Month"`, `"3 Months"` or `"Year"`. The help string in ActionKit says "grouping by day gives you only the daily totals". `updateParameterVisibility` hides Group By for category types, and the grouping code only reads quantity samples, so Sleep and Mindful cannot be grouped.
-- `WFHKSampleFilteringFillMissing` is a boolean, true by default. With it on, empty groups come back as zero samples. We turn it off and let the importer fill zeros.
+- `WFHKSampleFilteringFillMissing` is a boolean, true by default. With it on, empty groups come back as zero samples. We set it to true on every query grouped by day, because a real run stopped with "No samples for X" on a grouped query with no data. Ungrouped queries get false, since they have no groups to fill. Not yet confirmed on a phone that a filled day stops the error.
 - `WFHKSampleFilteringUnit` forces a unit. We leave it unset, so values come in the phone's units.
 - `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled` and `WFContentItemLimitNumber` work as in other Find actions.
 - If a type has no data from any source, or Shortcuts lacks permission, the action shows a "No Samples Found" alert with OK and Open Health. OK continues the shortcut. If the type has sources but nothing in range, it returns an empty list with no alert (`finishRunningWithError` block 2 in the iOS 18.2 decompile).
@@ -114,6 +116,19 @@ Sleep stage values, as Get Details returns them, vary by source: `In Bed`, `Asle
 
 No built-in action returns workouts. `WFHKSampleContentItem` wraps an `HKQuantitySample` or an `HKCategorySample` and nothing else. `WFFindHealthSamplesAction` in iOS 18.2 only resolves quantity and category types, and danielhopkins read the full iOS 27 picker list and found no Workouts row. `WFHKWorkoutContentItem` exists only as the output of Log Workout. The workout readers people use are third-party actions, for example Toolbox Pro's "Get Workouts". So the shortcut leaves workouts out.
 
+## Runs from Running Speed
+
+Getting workouts is not possible (see above), so the shortcut sends Running Speed samples and the importer works out the runs.
+
+- Find Health Samples label: `Running Speed`. Viticci's iOS 26.2 reference lists `shortcut_label_guess: "Running Speed"` for `HKQuantityTypeIdentifierRunningSpeed`, unit `m/s`, discrete. It is a guess, not an `observed_find_samples_labels` entry, so it is unconfirmed on a phone.
+- Calculate Statistics is `is.workflow.actions.statistics` with `WFStatisticsOperation` and `WFInput`, from Cherri's `actions/math.cherri` (`action 'statistics' statistic(statisticOperations operation: 'WFStatisticsOperation', variable input: 'WFInput')`).
+- The If action compares a number with `WFCondition` 2 and `WFNumberValue`. In Cherri's `conditions` map (`shortcut.go`) GreaterThan is 2, and `makeConditionalAction` in `shortcutgen.go` routes a number operand to `WFNumberValue` (`WFAnotherNumber` for a second one). Quantity operands use 1000 and 1001 instead, which does not apply here because the sum is a plain number.
+- The statistics input is the list of Value details of the grouped samples (Get Details of Health Sample with the whole sample list as input). Nothing found confirms that this returns a list of numbers rather than the first value.
+- The If's result (End If, `If Result`) is the lines when the sum is above 0, and an empty text otherwise.
+- The header carries `runs|checked`, which tells the importer that absence of runs is real.
+
+Sources: Cherri commit 426e6cf (`actions/math.cherri`, `shortcut.go`, `shortcutgen.go`) and Viticci's `data/healthkit-ios26.2-reference.json` at commit 2de03bf, both linked below.
+
 ## Number and date text
 
 - Format Date with ISO 8601 and time gives local time with offset, for example `2016-06-01T14:41:36-08:00` (Apple's Shortcuts User Guide). The first 10 characters are the local date.
@@ -128,6 +143,9 @@ No built-in action returns workouts. `WFHKSampleContentItem` wraps an `HKQuantit
 4. Whether "is between" compares exact instants or whole days. Either works here, since the window starts at midnight and ends now.
 5. The exact unit string for fluid ounces.
 6. Whether an automation that hits the "No Samples Found" alert waits for a tap or fails.
+7. Whether the label `Running Speed` resolves, and whether Fill Missing really prevents "No samples" on grouped queries.
+8. Whether Get Details with a list of samples as input returns all the values, so that Calculate Statistics can sum them.
+9. Whether `WFNumberValue: 0` with condition 2 works as a plain number compare in the legacy If layout on iOS 26.
 
 ## Sources
 
