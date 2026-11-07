@@ -22,7 +22,7 @@ const SCHEDULES: { type: ScheduleBody['type']; label: string; make: () => Schedu
 ];
 const HEALTH: [HealthType, string][] = [
   ['steps', 'Steps'], ['sleep', 'Sleep'], ['workouts', 'Workouts'],
-  ['exercise', 'Exercise minutes'], ['water', 'Water'], ['mindful', 'Mindful minutes'],
+  ['exercise', 'Exercise minutes'],
 ];
 const MEASURES: ['count' | 'distance' | 'minutes', string][] = [['count', 'Count'], ['distance', 'Distance'], ['minutes', 'Minutes']];
 

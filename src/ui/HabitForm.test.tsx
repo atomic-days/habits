@@ -13,7 +13,7 @@ function setup(habitId: string | null, logs = 0) {
   const actions = {
     markDone: vi.fn(async () => {}), undoDone: vi.fn(async () => {}), setNumber: vi.fn(async () => {}),
     startFast: vi.fn(async () => {}), endFast: vi.fn(async () => {}), editFast: vi.fn(async () => {}),
-    saveHabit: vi.fn(async () => {}), setArchived: vi.fn(async () => {}), deleteHabit: vi.fn(async () => {}),
+    saveHabit: vi.fn(async () => {}), setArchived: vi.fn(async () => {}), deleteHabit: vi.fn(async () => {}), deleteFast: vi.fn(async () => {}),
   };
   const onClose = vi.fn();
   const state: AppState = {
@@ -59,6 +59,15 @@ test('Workouts shows the workout type and measure fields', () => {
   expect(screen.getByRole('button', { name: 'Count' }).getAttribute('aria-pressed')).toBe('true');
   fireEvent.click(screen.getByRole('button', { name: 'Distance' }));
   expect(screen.getByRole('button', { name: 'Distance' }).getAttribute('aria-pressed')).toBe('true');
+});
+
+test('Apple Health offers steps, sleep, workouts and exercise minutes only', () => {
+  setup(null);
+  fireEvent.click(screen.getByRole('button', { name: 'Hit a number' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Apple Health' }));
+  for (const n of ['Steps', 'Sleep', 'Workouts', 'Exercise minutes']) expect(screen.getByRole('button', { name: n })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Water' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Mindful minutes' })).toBeNull();
 });
 
 test('Delete asks for confirmation and counts the check-ins', async () => {
