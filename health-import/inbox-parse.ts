@@ -8,6 +8,8 @@ import type { HealthPayload } from './merge.ts';
  *   window|<start ISO>|<end ISO>|<now ISO>
  *   steps|<start>|<end>|<value>|<unit>       also exercise, water, mindful, sleep
  *   workout|<start>|<end>|<type>|<minutes>|<distance>|<distance unit>[|<avg heart rate>]
+ *   runs|checked                              the shortcut looked for runs, so an absence of them is real
+ *   runspeed|<start>|<end>|<speed>|<unit>     one Running Speed sample, grouped into runs below
  *
  * Every date is local time with its offset, so the first 10 characters are the local date.
  */
@@ -37,6 +39,23 @@ const KM_PER: Record<string, number> = {
   mi: 1.609344, mile: 1.609344, miles: 1.609344,
   yd: 0.0009144, yard: 0.0009144, yards: 0.0009144, ft: 0.0003048, feet: 0.0003048,
 };
+
+const MPS_PER: Record<string, number> = {
+  'm/s': 1, 'm/sec': 1, 'm/second': 1, 'mps': 1, 'meter/second': 1, 'meters/second': 1, 'metre/second': 1, 'metres/second': 1,
+  'km/hr': 1 / 3.6, 'km/h': 1 / 3.6, 'km/hour': 1 / 3.6, 'kph': 1 / 3.6, 'kmph': 1 / 3.6,
+  'kilometer/hour': 1 / 3.6, 'kilometers/hour': 1 / 3.6, 'kilometre/hour': 1 / 3.6, 'kilometres/hour': 1 / 3.6,
+  'mi/hr': 0.44704, 'mi/h': 0.44704, 'mi/hour': 0.44704, 'mph': 0.44704,
+  'mile/hour': 0.44704, 'miles/hour': 0.44704,
+};
+
+/** A new run starts when the next sample begins more than this long after the last one ended. */
+const RUN_GAP_MS = 10 * 60_000;
+/** An instantaneous sample stands for the time to the next one, but never more than this. */
+const INSTANT_CAP_S = 60;
+const MIN_RUN_MS = 5 * 60_000;
+const MIN_RUN_KM = 0.5;
+
+interface SpeedSample { startIso: string; endIso: string; start: number; end: number; mps: number }
 
 class BadLine extends Error {}
 
@@ -90,6 +109,40 @@ function nightOf(endIso: string): DateKey {
   return Number(endIso.slice(11, 13)) >= 18 ? addDays(date, 1) : date;
 }
 
+/** Groups Running Speed samples into runs. Each run is keyed to the local date of its start by the caller. */
+function runsFromSpeed(samples: SpeedSample[]): Workout[] {
+  const sorted = [...samples].sort((a, b) => a.start - b.start || a.end - b.end);
+  const sessions: SpeedSample[][] = [];
+  let lastEnd = -Infinity;
+  for (const smp of sorted) {
+    if (sessions.length === 0 || smp.start - lastEnd > RUN_GAP_MS) sessions.push([]);
+    sessions[sessions.length - 1].push(smp);
+    lastEnd = Math.max(lastEnd, smp.end);
+  }
+  const runs: Workout[] = [];
+  for (const session of sessions) {
+    let meters = 0;
+    session.forEach((smp, i) => {
+      let seconds = (smp.end - smp.start) / 1000;
+      if (seconds === 0) {
+        const next = session[i + 1];
+        seconds = next ? Math.min(INSTANT_CAP_S, Math.max(0, (next.start - smp.start) / 1000)) : 0;
+      }
+      meters += smp.mps * seconds;
+    });
+    const first = session[0];
+    const last = session.reduce((a, b) => (b.end > a.end ? b : a));
+    const ms = last.end - first.start;
+    // The epsilon keeps a run of exactly 0.5 km from falling to float noise.
+    if (ms < MIN_RUN_MS || meters / 1000 < MIN_RUN_KM - 1e-9) continue;
+    runs.push({
+      type: 'running', start: first.startIso, end: last.endIso,
+      distanceKm: round(meters / 1000, 3), durationMin: round(ms / 60_000, 1), avgHeartRate: null,
+    });
+  }
+  return runs;
+}
+
 function parseHeader(line: string | undefined) {
   const f = (line ?? '').split('|');
   if (f.length < 4 || f[0] !== 'window') throw new Error('inbox file must start with window|<start>|<end>|<now>');
@@ -110,6 +163,8 @@ export function parseInbox(text: string): ParsedInbox {
   }
   const workouts: Record<DateKey, Workout[]> = {};
   let sawWorkout = false;
+  let runsChecked = false;
+  const speeds: SpeedSample[] = [];
   let skipped = 0;
 
   for (const raw of lines.slice(1)) {
@@ -135,6 +190,22 @@ export function parseInbox(text: string): ParsedInbox {
         sawWorkout = true;
         const date = start.slice(0, 10);
         if (days[date]) (workouts[date] ??= []).push(w);
+        continue;
+      }
+
+      if (kind === 'runs') {
+        if (f[1] !== 'checked') throw new BadLine(`unknown runs flag ${f[1]}`);
+        runsChecked = true;
+        continue;
+      }
+
+      if (kind === 'runspeed') {
+        if (f.length < 5) throw new BadLine('too few fields');
+        const [, , , value, unit] = f;
+        const startMs = isoTime(start);
+        const endMs = isoTime(end);
+        if (endMs < startMs) throw new BadLine('ends before it starts');
+        speeds.push({ startIso: start, endIso: end, start: startMs, end: endMs, mps: amount(value) * factor(MPS_PER, unit) });
         continue;
       }
 
@@ -168,12 +239,17 @@ export function parseInbox(text: string): ParsedInbox {
     }
   }
 
+  for (const run of runsFromSpeed(speeds)) {
+    const date = run.start.slice(0, 10);
+    if (days[date]) (workouts[date] ??= []).push(run);
+  }
+
   for (const [date, day] of Object.entries(days)) {
     day.steps = Math.round(day.steps ?? 0);
     day.waterLiters = round(day.waterLiters ?? 0, 3);
     for (const f of ['sleepMinutes', 'exerciseMinutes', 'mindfulMinutes'] as const) day[f] = round(day[f] ?? 0, 1);
-    // Only a file that reports workouts can say a day had none.
-    if (sawWorkout) day.workouts = workouts[date] ?? [];
+    // Only a file that reports workouts, or says it looked for runs, can say a day had none.
+    if (sawWorkout || runsChecked) day.workouts = workouts[date] ?? [];
   }
   return { sentAt, days, skipped };
 }

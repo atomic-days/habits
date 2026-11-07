@@ -182,6 +182,126 @@ describe('parseInbox', () => {
   });
 });
 
+const clock = (day: string, hhmmss: string) => `2026-11-${day}T${hhmmss}-05:00`;
+/** A runspeed line. Times are written as "DD HH:MM:SS". */
+const speed = (from: string, to: string, value: number | string, unit = 'm/s') => {
+  const t = (x: string) => clock(x.slice(0, 2), x.slice(3));
+  return `runspeed|${t(from)}|${t(to)}|${value}|${unit}`;
+};
+const RUNS = 'runs|checked';
+const runsOn = (r: ReturnType<typeof parse>, date: string) => r.days[date].workouts;
+
+describe('runs from running speed', () => {
+  test('converts m/s, km/hr and mi/hr, with spelling variants, to m/s', () => {
+    const cases: [string, number][] = [
+      ['m/s', 1], ['m/sec', 1], ['meters/second', 1], ['metres/second', 1], ['m/s', 1],
+      ['km/hr', 1 / 3.6], ['km/h', 1 / 3.6], ['kph', 1 / 3.6], ['kilometers/hour', 1 / 3.6],
+      ['mi/hr', 0.44704], ['mi/h', 0.44704], ['mph', 0.44704], ['miles/hour', 0.44704],
+    ];
+    for (const [unit, perUnit] of cases) {
+      // Ten minutes at 10 of the unit.
+      const r = parse(RUNS, speed('05 18:00:00', '05 18:10:00', 10, unit));
+      expect(r.skipped).toBe(0);
+      expect(runsOn(r, '2026-11-05')![0].distanceKm, unit).toBeCloseTo((10 * perUnit * 600) / 1000, 2);
+    }
+  });
+
+  test('an unknown unit or a negative speed is a skipped line', () => {
+    const r = parse(RUNS,
+      speed('05 18:00:00', '05 18:10:00', 3, 'furlongs/fortnight'), speed('05 18:00:00', '05 18:10:00', -1));
+    expect(r.skipped).toBe(2);
+    expect(runsOn(r, '2026-11-05')).toEqual([]);
+  });
+
+  test('turns contiguous interval samples into one run: summed distance, first start to last end', () => {
+    const r = parse(RUNS, speed('05 18:00:00', '05 18:05:00', 3), speed('05 18:05:00', '05 18:10:00', 4));
+    expect(runsOn(r, '2026-11-05')).toEqual([{
+      type: 'running', start: clock('05', '18:00:00'), end: clock('05', '18:10:00'),
+      distanceKm: 2.1, durationMin: 10, avgHeartRate: null,
+    }]);
+  });
+
+  test('splits at a 12-minute gap but not at a 9-minute one', () => {
+    const split = parse(RUNS, speed('05 07:00:00', '05 07:10:00', 3), speed('05 07:22:00', '05 07:32:00', 3));
+    expect(runsOn(split, '2026-11-05')).toHaveLength(2);
+    const joined = parse(RUNS, speed('05 07:00:00', '05 07:10:00', 3), speed('05 07:19:00', '05 07:29:00', 3));
+    const one = runsOn(joined, '2026-11-05')!;
+    expect(one).toHaveLength(1);
+    // The 9 minute gap counts toward duration but adds no distance.
+    expect(one[0].durationMin).toBe(29);
+    expect(one[0].distanceKm).toBe(3.6);
+  });
+
+  test('sorts samples by start before grouping', () => {
+    const r = parse(RUNS, speed('05 18:05:00', '05 18:10:00', 4), speed('05 18:00:00', '05 18:05:00', 3));
+    expect(runsOn(r, '2026-11-05')).toHaveLength(1);
+    expect(runsOn(r, '2026-11-05')![0].start).toBe(clock('05', '18:00:00'));
+  });
+
+  test('an instantaneous sample covers the time to the next sample', () => {
+    // One sample every 10 s at 3 m/s from 0:00 to 6:00. The last has no successor and adds nothing.
+    const t = (x: number) => `18:${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+    const lines: string[] = [];
+    for (let s = 0; s <= 360; s += 10) lines.push(speed(`05 ${t(s)}`, `05 ${t(s)}`, 3));
+    const run = runsOn(parse(RUNS, ...lines), '2026-11-05')!;
+    expect(run).toHaveLength(1);
+    expect(run[0].durationMin).toBe(6);
+    expect(run[0].distanceKm).toBe(1.08);
+  });
+
+  test('an instantaneous sample covers at most 60 seconds', () => {
+    // 6 m/s at 0:00, 2:00 and 7:00. The first two cover 60 s each, the last covers nothing.
+    const r = parse(RUNS,
+      speed('05 18:00:00', '05 18:00:00', 6), speed('05 18:02:00', '05 18:02:00', 6), speed('05 18:07:00', '05 18:07:00', 6));
+    const run = runsOn(r, '2026-11-05')!;
+    expect(run[0].distanceKm).toBe(0.72);
+    expect(run[0].durationMin).toBe(7);
+  });
+
+  test('drops sessions under 5 minutes or under 0.5 km and keeps the exact boundary', () => {
+    const r = parse(RUNS,
+      speed('03 18:00:00', '03 18:04:59', 5), // fast enough, 4:59 long
+      speed('04 18:00:00', '04 18:10:00', 0.8), // 10 min, 0.48 km
+      speed('05 18:00:00', '05 18:05:00', 5 / 3)); // 5 min, 0.5 km
+    expect(runsOn(r, '2026-11-03')).toEqual([]);
+    expect(runsOn(r, '2026-11-04')).toEqual([]);
+    expect(runsOn(r, '2026-11-05')).toHaveLength(1);
+    expect(runsOn(r, '2026-11-05')![0].distanceKm).toBe(0.5);
+  });
+
+  test('a run that crosses midnight lands on the date it started', () => {
+    const r = parse(RUNS, speed('04 23:50:00', '04 23:59:59', 3), speed('05 00:00:00', '05 00:20:00', 3));
+    expect(runsOn(r, '2026-11-04')).toHaveLength(1);
+    expect(runsOn(r, '2026-11-04')![0].end).toBe(clock('05', '00:20:00'));
+    expect(runsOn(r, '2026-11-05')).toEqual([]);
+  });
+
+  test('runs|checked with no runs clears every date in the window', () => {
+    const r = parse(RUNS);
+    expect(Object.keys(r.days)).toHaveLength(4);
+    for (const day of Object.values(r.days)) expect(day.workouts).toEqual([]);
+  });
+
+  test('runs|checked puts the derived runs on their dates and empty lists elsewhere', () => {
+    const r = parse(RUNS, speed('05 18:00:00', '05 18:10:00', 3));
+    expect(runsOn(r, '2026-11-05')).toHaveLength(1);
+    expect(runsOn(r, '2026-11-06')).toEqual([]);
+  });
+
+  test('without runs|checked the workouts field is left out, so stored workouts stay', () => {
+    const r = parse(speed('05 18:00:00', '05 18:10:00', 3));
+    for (const day of Object.values(r.days)) expect(day).not.toHaveProperty('workouts');
+    const run = { type: 'running', start: 'a', end: 'b', distanceKm: 5, durationMin: 30, avgHeartRate: null };
+    const kept = keepStoredWorkouts({ '2026-11': { '2026-11-05': { workouts: [run] } } }, r.days);
+    expect(kept['2026-11-05'].workouts).toEqual([run]);
+  });
+
+  test('a run outside the window is ignored', () => {
+    const r = parse(RUNS, speed('01 18:00:00', '01 18:10:00', 3));
+    for (const day of Object.values(r.days)) expect(day.workouts).toEqual([]);
+  });
+});
+
 describe('keepStoredWorkouts', () => {
   const run = { type: 'running', start: '2026-11-05T18:00:00-05:00', end: '2026-11-05T18:30:00-05:00',
     distanceKm: 5, durationMin: 30, avgHeartRate: null };
