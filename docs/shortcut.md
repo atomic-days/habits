@@ -30,7 +30,7 @@ For each one, choose Run Shortcut, pick Habits sync, and turn on Run Immediately
 
 Each run writes one text file to `data/inbox/` in the data repo. The Health inbox workflow there turns it into `data/health/YYYY-MM.json` and deletes the file. A run replaces every day in its window, so a day with no samples becomes zero.
 
-It sends steps, exercise minutes, water, mindful minutes and sleep. It can't send workouts, because no built-in Shortcuts action reads them. A Runs habit stays empty until another source provides workouts.
+It sends steps, exercise minutes and sleep. It can't send workouts, because no built-in Shortcuts action reads them. A Runs habit stays empty until another source provides workouts.
 
 ## Troubleshooting
 
@@ -38,7 +38,7 @@ It sends steps, exercise minutes, water, mindful minutes and sleep. It can't sen
 - **The upload fails with 401, 403 or 404.** The key is wrong, expired, or can't write to the repo. Make a new key as in `docs/setup.md`. Delete Habits sync in Shortcuts, then add it again from https://atomic-days.github.io/habits/habits-sync.shortcut and paste the new key.
 - **"Add the Health shortcut" does nothing.** Open https://atomic-days.github.io/habits/ in Safari and tap the link there. If Safari downloads the file instead, open it from Downloads.
 - **Run links say the shortcut can't be found.** The links look for a shortcut named exactly "Habits sync". Rename it in Shortcuts if iOS named it after the file.
-- **"No Samples Found".** Health has no data of one type, for example water if you never log it. Tap OK and the run carries on. An automation may stop there instead. Logging one sample of that type in Health stops the alert.
+- **"No Samples Found".** Health has no data of one type, for example sleep if you never log it. Tap OK and the run carries on. An automation may stop there instead. Logging one sample of that type in Health stops the alert.
 - **A type is always zero.** Open the shortcut and look at the Find Health Samples action for that type. If its Type field is empty, iOS doesn't know the name the shortcut uses. Pick the type again from the list.
 - **Some lines were skipped.** The Health inbox run log lists bad lines per file. A file the importer can't read at all moves to `data/inbox/failed/`.
 - **A run failed while the phone was locked.** iOS blocks Health reads on a locked phone. The next run sends the same days again and fixes it.
