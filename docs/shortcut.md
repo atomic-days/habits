@@ -30,7 +30,11 @@ For each one, choose Run Shortcut, pick Habits sync, and turn on Run Immediately
 
 Each run writes one text file to `data/inbox/` in the data repo. The Health inbox workflow there turns it into `data/health/YYYY-MM.json` and deletes the file. A run replaces every day in its window, so a day with no samples becomes zero.
 
-It sends steps, exercise minutes and sleep. It can't send workouts, because no built-in Shortcuts action reads them. A Runs habit stays empty until another source provides workouts.
+It sends steps, exercise minutes, sleep and Running Speed samples. It can't read workouts, because no built-in Shortcuts action does that.
+
+Runs are worked out from Running Speed, which the Apple Watch records during running workouts. The importer joins the samples into one run when they are less than 10 minutes apart, then keeps runs of at least 5 minutes and 0.5 km. The distance is an estimate, speed times time, so expect it to differ a little from what the Workout app shows. It covers runs recorded with the Apple Watch Workout app. A run tracked by another app, or an iPhone-only run, leaves no Running Speed samples and does not show up.
+
+Every run of the shortcut replaces the runs for its whole window, so a run that disappears from Health disappears from the app too.
 
 ## Troubleshooting
 
