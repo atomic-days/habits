@@ -18,13 +18,13 @@ function setup(data: AppData = seedData(), today = '2026-11-06', now = SEED_NOW)
   const openForm = vi.fn();
   const state: AppState = {
     data, now, today, repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, openForm, actions,
+    reload: async () => {}, openForm, openHistory: vi.fn(), actions,
   };
   render(<AppContext.Provider value={state}><Today /></AppContext.Provider>);
   return { actions, openForm };
 }
 
-const row = (name: string) => within(screen.getByText(name, { selector: 'h3' }).closest('li')!);
+const row = (name: string) => within(screen.getByText(name, { selector: 'h3 button' }).closest('li')!);
 
 test('shows the date and an Add habit button', () => {
   const { openForm } = setup();
@@ -109,7 +109,7 @@ test('Friday laundry done on Friday has no row on Saturday', () => {
   const d = seedData();
   d.logs.push({ habit: 'laundry', date: '2026-11-06', value: 1, at: '2026-11-06T21:00:00-05:00' });
   setup(d, '2026-11-07', SATURDAY);
-  expect(screen.queryByText('Laundry', { selector: 'h3' })).toBeNull();
+  expect(screen.queryByText('Laundry', { selector: 'h3 button' })).toBeNull();
 });
 
 test('the earlier-days menu covers yesterday back to 7 days ago', () => {

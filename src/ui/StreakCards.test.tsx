@@ -9,13 +9,13 @@ vi.mock('../store/repo', () => ({}));
 afterEach(cleanup);
 
 function setup(data: AppData = seedData()) {
-  const openForm = vi.fn();
+  const openHistory = vi.fn();
   const state = {
     data, now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, openForm, actions: {},
+    reload: async () => {}, openForm: vi.fn(), openHistory, actions: {},
   } as unknown as AppState;
   render(<AppContext.Provider value={state}><StreakCards /></AppContext.Provider>);
-  return { openForm };
+  return { openHistory };
 }
 
 const card = (name: string) => within(screen.getByText(name).closest('button')!);
@@ -52,8 +52,8 @@ test('a streak of 1 uses the singular', () => {
   expect(card('Laundry').getByText(/^ ?times? in a row$/)).toBeTruthy();
 });
 
-test('clicking the Laundry card opens its form', () => {
-  const { openForm } = setup();
+test('clicking the Laundry card opens its history', () => {
+  const { openHistory } = setup();
   fireEvent.click(screen.getByText('Laundry'));
-  expect(openForm).toHaveBeenCalledWith('laundry');
+  expect(openHistory).toHaveBeenCalledWith('laundry');
 });

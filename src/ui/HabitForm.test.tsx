@@ -18,7 +18,7 @@ function setup(habitId: string | null, logs = 0) {
   const onClose = vi.fn();
   const state: AppState = {
     data, now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, openForm: () => {}, actions,
+    reload: async () => {}, openForm: () => {}, openHistory: () => {}, actions,
   };
   render(<AppContext.Provider value={state}><HabitForm habitId={habitId} onClose={onClose} /></AppContext.Provider>);
   return { actions, onClose };

@@ -10,7 +10,7 @@ afterEach(cleanup);
 function show(sync: Partial<SyncInfo>) {
   const state: AppState = {
     data: seedData(), now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, openForm: () => {}, actions: {} as AppState['actions'],
+    reload: async () => {}, openForm: () => {}, openHistory: () => {}, actions: {} as AppState['actions'],
     sync: { offline: false, pending: 0, syncing: false, syncedAt: null, ...sync },
   };
   return render(<AppContext.Provider value={state}><SyncStatus /></AppContext.Provider>);

@@ -16,7 +16,7 @@ function setup(data: AppData) {
   };
   const state: AppState = {
     data, now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, openForm: vi.fn(), actions,
+    reload: async () => {}, openForm: vi.fn(), openHistory: vi.fn(), actions,
   };
   render(<AppContext.Provider value={state}><FastCard /></AppContext.Provider>);
   return actions;

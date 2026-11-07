@@ -11,7 +11,7 @@ import { number, shortDay, timeOfDay } from './format.ts';
 const EARLIER_DAYS = 7;
 
 export function TodayRow({ habit }: { habit: Habit }) {
-  const { data, now, today, actions } = useApp();
+  const { data, now, today, actions, openHistory } = useApp();
   const [more, setMore] = useState(false);
   const [draft, setDraft] = useState<string | null>(null);
   const done = habit.done;
@@ -37,7 +37,9 @@ export function TodayRow({ habit }: { habit: Habit }) {
   return (
     <li class="row">
       <div class="row-main">
-        <h3>{habit.name}</h3>
+        <h3>
+          <button type="button" class="name-link" onClick={() => openHistory(habit.id)}>{habit.name}</button>
+        </h3>
 
         {done.type === 'check' && (
           <div class="row-actions">

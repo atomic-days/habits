@@ -5,7 +5,7 @@ import { MiniGrid } from './MiniGrid.tsx';
 import { goalText } from './goalText.ts';
 
 export function StreakCards() {
-  const { data, today, now, openForm } = useApp();
+  const { data, today, now, openHistory } = useApp();
   const habits = data.habits.filter((h) => !h.archived);
   if (habits.length === 0) return null;
   return (
@@ -15,7 +15,7 @@ export function StreakCards() {
         {habits.map((h) => {
           const s = streak(h, data, today, now);
           return (
-            <button type="button" class="streak-card" key={h.id} onClick={() => openForm(h.id)}>
+            <button type="button" class="streak-card" key={h.id} onClick={() => openHistory(h.id)}>
               <span class="streak-head">
                 <span class="streak-name">
                   <span class="dot" style={{ background: PALETTES[h.color][3] }} />

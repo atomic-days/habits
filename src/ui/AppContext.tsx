@@ -35,6 +35,8 @@ export interface AppState {
   /** Sends queued taps, then reloads from GitHub. Missing in a bare test context, which falls back to reload. */
   refresh?(): Promise<void>;
   openForm(habitId: string | null): void;
+  /** Opens the history page of one habit. */
+  openHistory(habitId: string): void;
   actions: Actions;
   /** Offline and outbox state. Missing in a bare test context, which reads as online and idle. */
   sync?: SyncInfo;

@@ -18,7 +18,7 @@ function setScroll(top: number) {
 function setup(refresh: () => Promise<void>) {
   const state: AppState = {
     data: seedData(), now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-    reload: async () => {}, refresh, openForm: () => {}, actions: {} as AppState['actions'],
+    reload: async () => {}, refresh, openForm: () => {}, openHistory: () => {}, actions: {} as AppState['actions'],
   };
   render(<AppContext.Provider value={state}><Today /></AppContext.Provider>);
 }

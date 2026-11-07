@@ -9,6 +9,7 @@ import * as store from '../store/repo.ts';
 import { clearConfig, loadConfig, saveConfig } from './config.ts';
 import { AppContext, type Actions, type AppState } from './AppContext.tsx';
 import { HabitForm } from './HabitForm.tsx';
+import { HabitHistory } from './HabitHistory.tsx';
 import { Today } from './Today.tsx';
 import { TokenSetup } from './TokenSetup.tsx';
 import './app.css';
@@ -33,6 +34,7 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
   const [repo, setRepo] = useState<DataRepo | null>(() => loadConfig());
   const [status, setStatus] = useState<Status>({ kind: 'loading' });
   const [form, setForm] = useState<{ habitId: string | null } | null>(null);
+  const [historyId, setHistoryId] = useState<string | null>(null);
   const [clock, setClock] = useState(() => now());
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<Op[]>([]);
@@ -215,6 +217,8 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
     );
   }
 
+  // A habit deleted from the form leaves nothing to show, so the screen falls back to Today.
+  const historyHabit = historyId ? shown!.habits.find((h) => h.id === historyId) : undefined;
   const state: AppState = {
     data: shown!,
     now: clock,
@@ -227,6 +231,7 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
       await loadRef.current(repo, true);
     },
     openForm: (habitId) => setForm({ habitId }),
+    openHistory: (habitId) => setHistoryId(habitId),
     actions: actions!,
     sync: { offline, pending: pending.length, syncing, syncedAt },
   };
@@ -240,6 +245,8 @@ export function App({ now = () => new Date() }: { now?: () => Date }) {
       )}
       {form ? (
         <HabitForm habitId={form.habitId} onClose={() => setForm(null)} />
+      ) : historyHabit ? (
+        <HabitHistory habit={historyHabit} onBack={() => setHistoryId(null)} />
       ) : (
         <Today />
       )}

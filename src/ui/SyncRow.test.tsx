@@ -24,7 +24,7 @@ beforeEach(() => {
   render(
     <AppContext.Provider value={{
       data: seedData(), now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-      reload, openForm: () => {}, actions: {} as AppState['actions'],
+      reload, openForm: () => {}, openHistory: () => {}, actions: {} as AppState['actions'],
     }}><SyncRow /></AppContext.Provider>,
   );
 });
@@ -122,7 +122,7 @@ test('offline disables Sync now and says why', () => {
   render(
     <AppContext.Provider value={{
       data: seedData(), now: SEED_NOW, today: '2026-11-06', repo: { owner: 'o', repo: 'r', token: 't' },
-      reload, openForm: () => {}, actions: {} as AppState['actions'],
+      reload, openForm: () => {}, openHistory: () => {}, actions: {} as AppState['actions'],
       sync: { offline: true, pending: 0, syncing: false, syncedAt: null },
     }}><SyncRow /></AppContext.Provider>,
   );
