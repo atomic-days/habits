@@ -32,7 +32,7 @@ Each run writes one text file to `data/inbox/` in the data repo. The Health inbo
 
 It sends steps, exercise minutes, sleep and Running Speed samples. It can't read workouts, because no built-in Shortcuts action does that.
 
-Runs are worked out from Running Speed, which the Apple Watch records during running workouts. The importer joins the samples into one run when they are less than 10 minutes apart, then keeps runs of at least 5 minutes and 0.5 km. The distance is an estimate, speed times time, so expect it to differ a little from what the Workout app shows. It covers runs recorded with the Apple Watch Workout app. A run tracked by another app, or an iPhone-only run, leaves no Running Speed samples and does not show up.
+Runs are worked out from Running Speed, which the Apple Watch records during running workouts. The importer joins the samples into one run when they are less than 10 minutes apart, then keeps runs of at least 5 minutes and 0.5 km. The distance is an estimate, speed times time, so expect it to differ a little from what the Workout app shows. It covers runs recorded with the Apple Watch Workout app. A run tracked by another app, or an iPhone-only run, leaves no Running Speed samples and does not show up. If Health has no Running Speed data at all, the shortcut stops with a Running Speed error.
 
 Every run of the shortcut replaces the runs for its whole window, so a run that disappears from Health disappears from the app too.
 

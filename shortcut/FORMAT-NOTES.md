@@ -93,7 +93,7 @@ WFContentItemFilter = {
 - Operator 4 is "is". Operator 1001 is "is in the last" with `Number` and `Unit` 16 (days). Operator 1002 is "is today". Operator 1003 is "is between", with `Date` and `AnotherDate`.
 - Two real iCloud shortcuts use 1003 with `Date` and `AnotherDate` as `WFTextTokenAttachment`. One points both at Ask, the other at the outputs of earlier actions. The leftover `Number: "1"` and `Unit: 16` appear in both, and we copy them.
 - `WFHKSampleFilteringGroupBy` takes `"Minute"`, `"Hour"`, `"Day"`, `"Week"`, `"Month"`, `"3 Months"` or `"Year"`. The help string in ActionKit says "grouping by day gives you only the daily totals". `updateParameterVisibility` hides Group By for category types, and the grouping code only reads quantity samples, so Sleep and Mindful cannot be grouped.
-- `WFHKSampleFilteringFillMissing` is a boolean, true by default. With it on, empty groups come back as zero samples. We set it to true on every query grouped by day, because a real run stopped with "No samples for X" on a grouped query with no data. Ungrouped queries get false, since they have no groups to fill. Not yet confirmed on a phone that a filled day stops the error.
+- `WFHKSampleFilteringFillMissing` is a boolean, true by default. With it on, empty days inside a window that has some samples come back as zero samples. It does not stop the "No samples" error when the whole window is empty (seen with Running Speed on 2026-11-07). We leave it on for the grouped daily kinds.
 - `WFHKSampleFilteringUnit` forces a unit. We leave it unset, so values come in the phone's units.
 - `WFContentItemSortProperty`, `WFContentItemSortOrder`, `WFContentItemLimitEnabled` and `WFContentItemLimitNumber` work as in other Find actions.
 - If a type has no data from any source, or Shortcuts lacks permission, the action shows a "No Samples Found" alert with OK and Open Health. OK continues the shortcut. If the type has sources but nothing in range, it returns an empty list with no alert (`finishRunningWithError` block 2 in the iOS 18.2 decompile).
@@ -121,10 +121,9 @@ No built-in action returns workouts. `WFHKSampleContentItem` wraps an `HKQuantit
 Getting workouts is not possible (see above), so the shortcut sends Running Speed samples and the importer works out the runs.
 
 - Find Health Samples label: `Running Speed`. Viticci's iOS 26.2 reference lists `shortcut_label_guess: "Running Speed"` for `HKQuantityTypeIdentifierRunningSpeed`, unit `m/s`, discrete. It is a guess, not an `observed_find_samples_labels` entry, so it is unconfirmed on a phone.
-- Calculate Statistics is `is.workflow.actions.statistics` with `WFStatisticsOperation` and `WFInput`, from Cherri's `actions/math.cherri` (`action 'statistics' statistic(statisticOperations operation: 'WFStatisticsOperation', variable input: 'WFInput')`).
-- The If action compares a number with `WFCondition` 2 and `WFNumberValue`. In Cherri's `conditions` map (`shortcut.go`) GreaterThan is 2, and `makeConditionalAction` in `shortcutgen.go` routes a number operand to `WFNumberValue` (`WFAnotherNumber` for a second one). Quantity operands use 1000 and 1001 instead, which does not apply here because the sum is a plain number.
-- The statistics input is the list of Value details of the grouped samples (Get Details of Health Sample with the whole sample list as input). Nothing found confirms that this returns a list of numbers rather than the first value.
-- The If's result (End If, `If Result`) is the lines when the sum is above 0, and an empty text otherwise.
+- v4 grouped Running Speed by day with Fill Missing, summed it and ran the raw query only when the sum was above 0. On 2026-11-07 it stopped on Running Speed in a week with no runs, so Fill Missing does not prevent the empty-result error.
+- v5 finds the newest Running Speed sample ever (no date row, `Latest First`, `WFContentItemLimitEnabled: true`, `WFContentItemLimitNumber: 1`), formats its start and the window start as `yyyyMMdd`, subtracts them with Calculate (`is.workflow.actions.math`, `WFInput`, `WFMathOperation: "-"`, `WFMathOperand`, output "Calculation Result") and runs the windowed query only when the gap is at least 0 (`WFCondition: 3`). Someone with no Running Speed samples at all still gets the error.
+- The If's result (End If, `If Result`) is the lines when a run falls in the window, and an empty text otherwise.
 - The header carries `runs|checked`, which tells the importer that absence of runs is real.
 
 Sources: Cherri commit 426e6cf (`actions/math.cherri`, `shortcut.go`, `shortcutgen.go`) and Viticci's `data/healthkit-ios26.2-reference.json` at commit 2de03bf, both linked below.
@@ -143,9 +142,9 @@ Sources: Cherri commit 426e6cf (`actions/math.cherri`, `shortcut.go`, `shortcutg
 4. Whether "is between" compares exact instants or whole days. Either works here, since the window starts at midnight and ends now.
 5. The exact unit string for fluid ounces.
 6. Whether an automation that hits the "No Samples Found" alert waits for a tap or fails.
-7. Whether the label `Running Speed` resolves, and whether Fill Missing really prevents "No samples" on grouped queries.
-8. Whether Get Details with a list of samples as input returns all the values, so that Calculate Statistics can sum them.
-9. Whether `WFNumberValue: 0` with condition 2 works as a plain number compare in the legacy If layout on iOS 26.
+7. Whether the label `Running Speed` resolves. The v4 error named Running Speed, so it likely does.
+8. Whether Calculate accepts the two `yyyyMMdd` texts as numbers.
+9. Whether `WFNumberValue: 0` with condition 3 works as a plain number compare in the legacy If layout on iOS 26.
 
 ## Sources
 

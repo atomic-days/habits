@@ -27,9 +27,9 @@ DEFAULT_DAYS = '7'
 # (kind written on each line, Find Health Samples type label, group by day).
 # The labels are ActionKit's own names; see "Open questions" in shortcut/FORMAT-NOTES.md.
 # Find Health Samples stops the whole shortcut when a type has no samples in the window,
-# so only types the user actually records belong here. Grouped queries set Fill Missing, so
-# a day with no samples comes back as a zero sample instead of stopping the run. Water and mindful minutes were
-# dropped on 2026-11-06 after "No samples for water" stopped the first real run.
+# so only types the user records every day belong here. Fill Missing on a grouped query does not
+# prevent that: v4 stopped on Running Speed in a week with no runs (2026-11-07). Water and mindful
+# minutes were dropped on 2026-11-06 after "No samples for water" stopped the first real run.
 KINDS = [
     ('steps', 'Steps', True),
     ('exercise', 'Exercise Time', True),
@@ -41,8 +41,8 @@ OBJ = '￼'  # Shortcuts marks each inline variable with this character
 RUNS_FLAG = 'runs|checked'
 # Apple Watch records Running Speed during running workouts. No built-in action reads workouts.
 RUN_SPEED_LABEL = 'Running Speed'
-# WFCondition for "is greater than" on a number (Cherri conditions map).
-GREATER_THAN = 2
+# WFCondition for "is at least" on a number (Cherri conditions map; 2 is "is greater than").
+AT_LEAST = 3
 
 NS = uuid.UUID('6f1d7c52-3a5e-4f0b-9c1e-8a2b4d6e0f13')
 
@@ -215,16 +215,35 @@ def build():
         find_samples(f'{kind} samples', label, from_ref, query_end, by_day)
         sample_lines(kind, f'{kind} samples')
 
-    # 5b. Runs. Running Speed grouped by day never comes back empty (Fill Missing), so its sum says
-    # whether any run happened. Only then does the raw query run, and the importer builds the runs.
-    find_samples('speed days', RUN_SPEED_LABEL, start, query_end, True)
-    details('speed day values', 'Value', output('speed days', 'Health Samples'))
-    act('statistics', {'WFStatisticsOperation': 'Sum',
-                       'WFInput': attachment(output('speed day values', 'Value'))}, 'speed sum')
+    # 5b. Runs. A week with no runs has no Running Speed samples, and an empty Find stops the shortcut.
+    # So first find the newest Running Speed sample ever, which exists for anyone who has run with
+    # the watch, and run the windowed query only when that sample falls inside the window.
+    act('filter.health.quantity', {
+        'WFContentItemFilter': {
+            'Value': {'WFActionParameterFilterPrefix': 1, 'WFContentPredicateBoundedDate': False,
+                      'WFActionParameterFilterTemplates': [
+                          {'Property': 'Type', 'Operator': 4, 'Removable': False, 'Bounded': True,
+                           'Values': {'Enumeration': {'Value': RUN_SPEED_LABEL,
+                                                      'WFSerializationType': 'WFStringSubstitutableState'}}}]},
+            'WFSerializationType': 'WFContentPredicateTableTemplate',
+        },
+        'WFContentItemSortProperty': 'Start Date',
+        'WFContentItemSortOrder': 'Latest First',
+        'WFContentItemLimitEnabled': True,
+        'WFContentItemLimitNumber': 1,
+        'WFHKSampleFilteringFillMissing': False,
+    }, 'latest speed')
+    details('latest speed start', 'Start Date', output('latest speed', 'Health Samples'))
+    # Days as yyyyMMdd numbers: the newest sample is in the window when its day is at least the first day.
+    for name, ref in (('latest speed day', output('latest speed start', 'Start Date')), ('window day', start)):
+        act('format.date', {'WFDate': tokens(ref), 'WFDateFormatStyle': 'Custom', 'WFDateFormat': 'yyyyMMdd'}, name)
+    act('math', {'WFInput': attachment(output('latest speed day', 'Formatted Date')), 'WFMathOperation': '-',
+                 'WFMathOperand': attachment(output('window day', 'Formatted Date'))}, 'speed day gap')
     runs_if = uid('runs if')
-    act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 0, 'WFCondition': GREATER_THAN,
+    act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 0, 'WFCondition': AT_LEAST,
                         'WFNumberValue': 0,
-                        'WFInput': {'Type': 'Variable', 'Variable': attachment(output('speed sum', 'Statistics'))}})
+                        'WFInput': {'Type': 'Variable',
+                                    'Variable': attachment(output('speed day gap', 'Calculation Result'))}})
     find_samples('speed samples', RUN_SPEED_LABEL, start, query_end, False)
     sample_lines('runspeed', 'speed samples')
     act('conditional', {'GroupingIdentifier': runs_if, 'WFControlFlowMode': 1})
