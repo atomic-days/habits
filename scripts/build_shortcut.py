@@ -166,6 +166,12 @@ def build():
     adjust('window start', output('days back start', 'Adjusted Date'), 'Add', '1', 'days')
     start = output('window start', 'Adjusted Date')
     adjust('sleep window start', start, 'Subtract', '6', 'hr')
+    # Find Health Samples compares "is between" by whole days and leaves out the end day,
+    # so a query ending at "now" dropped everything from today (seen on the first real run).
+    # The query ends at the start of tomorrow instead; the header still says "now".
+    adjust('today start', now, 'Get Start of Day')
+    adjust('query end', output('today start', 'Adjusted Date'), 'Add', '1', 'days')
+    query_end = output('query end', 'Adjusted Date')
     iso('start iso', start)
     iso('now iso', now)
     act('format.date', {'WFDate': tokens(now), 'WFDateFormatStyle': 'Custom', 'WFDateFormat': 'yyyyMMdd-HHmmss'},
@@ -178,7 +184,7 @@ def build():
     # 5. One line per sample: kind|start|end|value|unit. Grouped kinds give one sample per day.
     for kind, label, by_day in KINDS:
         from_ref = output('sleep window start', 'Adjusted Date') if kind == 'sleep' else start
-        find_samples(f'{kind} samples', label, from_ref, now, by_day)
+        find_samples(f'{kind} samples', label, from_ref, query_end, by_day)
         act('repeat.each', {'GroupingIdentifier': uid(f'{kind} repeat'), 'WFControlFlowMode': 0,
                             'WFInput': attachment(output(f'{kind} samples', 'Health Samples'))})
         details(f'{kind} start', 'Start Date')
